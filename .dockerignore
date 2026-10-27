@@ -13,3 +13,4 @@ docs
 scripts
 README.md
 .bootstrap
+gha-creds-*.json
