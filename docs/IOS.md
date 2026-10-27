@@ -91,3 +91,16 @@ The paired iPhone 16 Pro simulator running iOS 18.6 synced the gallery and facts
 An offline quiz displayed photo 1 of 5. After one correct test answer, **Next question** changed to photo 2 of 5 with its corresponding credit and license. Finish saved the one-answer session locally. Another offline restart retained all five image copies, the answer and completed session. Restoring the saved production URL and syncing uploaded the test records successfully: the simulator and API matched at 7 cars, 20 facts, 4 answers and 2 completed sessions, with all original record fingerprints unchanged.
 
 The simulator was left connected to production on the Ford Model T gallery. No code fixes were needed. This validates production photo research, database storage, sync, persistence and quiz rotation with the API unreachable; full network disconnection, physical-device behavior and personal-photo fallback were not additionally tested. The device token stayed out of chat, logs and commits, and temporary verification scripts and fingerprints were removed.
+
+
+## Add a car by photographing its plaque
+
+In Garage, choose **Add car by plaque**, then **Take plaque photo** or **Choose plaque photo**. Camera capture requires camera permission and supported hardware; saved-photo import is also available. Hold the plaque square to the camera and fill the frame with readable text.
+
+Text recognition runs on-device. Review the suggested car name and the entire transcription, correcting years, model numbers and units against the photo. You can assign an exhibit and then choose **Save car** to keep the entry offline, or **Save and research** to save it and start the existing API research flow. No car is saved automatically when a photo is selected. Blank or unreadable text needs a clearer image or manual correction, and the app keeps over-limit text visible for editing instead of truncating it.
+
+The reviewed transcription becomes identification notes with a museum-plaque label. A compact JPEG copy (at most 250 KiB) is saved separately as the museum plaque and synced to the private API. It remains available in car details across restarts and never becomes a quiz photo. Use Edit to correct the identification notes or remove the plaque photo; removing that photo preserves the notes. An existing matching car name is flagged in the review screen so you can cancel and edit that car instead of adding a duplicate.
+
+Only the reviewed car name and identification notes are sent to OpenAI by research; plaque image bytes stay in the app/API library. Offline saving does not require a configured API. If online research fails, the saved entry remains available to retry later.
+
+Validation for this change includes actual on-device OCR of a generated plaque image, identification-heading parsing, invalid-image handling, compact JPEG output, separate plaque/quiz-photo persistence, API round-trip and size validation, and confirmation that photo bytes are absent from provider research payloads. Physical iPhone camera capture has not yet been validated. System photo-picker automation in the simulator was unavailable during the UI check; automated OCR/persistence tests passed, and the add/review screen and photo-picker presentation were inspected.

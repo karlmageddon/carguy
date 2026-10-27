@@ -186,3 +186,25 @@ def test_sqlite_persistence(tmp_path):
     seed(first)
     second = TestClient(create_app(store=SQLiteStore(path), researcher=Researcher(), token="test-device"))
     assert len(second.get("/v1/snapshot", headers=AUTH).json()["facts"]) == 1
+
+
+def test_plaque_photo_sync_roundtrip_and_validation(client):
+    import base64
+
+    jpeg = base64.b64encode(b"\xff\xd8\xffplaque-fixture").decode()
+    car = {
+        "id": "plaque-car",
+        "name": "Plaque fixture",
+        "updatedAt": 1,
+        "notes": "Museum plaque transcription:\nReviewed fixture text",
+        "plaquePhotoData": jpeg,
+    }
+    response = sync(client, cars=[car])
+    assert response.status_code == 200
+    saved = next(c for c in response.json()["cars"] if c["id"] == car["id"])
+    assert saved["plaquePhotoData"] == jpeg
+    assert saved["photoData"] is None
+    assert saved["notes"] == car["notes"]
+    assert sync(client, cars=[car | {"plaquePhotoData": "not a jpeg"}]).status_code == 422
+    too_large = base64.b64encode(b"\xff\xd8\xff" + b"x" * (250 * 1024)).decode()
+    assert sync(client, cars=[car | {"plaquePhotoData": too_large}]).status_code == 422
