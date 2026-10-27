@@ -101,9 +101,11 @@ def begin_research(state, car_id: str):
         "carId": car_id,
         "status": "researching",
         "message": "Researching sources…",
-        "photoUrl": None,
-        "photoSourceUrl": None,
-        "photoCaption": None,
+        "photoUrl": previous.get("photoUrl") if previous else None,
+        "photoSourceUrl": previous.get("photoSourceUrl") if previous else None,
+        "photoCaption": previous.get("photoCaption") if previous else None,
+        "photos": previous.get("photos", []) if previous else [],
+        "photoMessage": previous.get("photoMessage", "") if previous else "",
         "updatedAt": started,
     }
     return car, started
@@ -130,6 +132,16 @@ def finish_research(state, car: Car, started: float, result: ResearchResult):
         state["facts"][fact.id] = document(fact)
         state["fact_versions"][f"{fact.id}_1"] = document(fact)
         existing_statements.add(draft.statement.casefold())
+    gallery = [document(photo) for photo in result.photos]
+    if len(gallery) < 3:
+        for previous in current.get("photos", []):
+            if len(gallery) == 5:
+                break
+            if not any(
+                photo["sourceUrl"] == previous["sourceUrl"] or photo["imageData"] == previous["imageData"]
+                for photo in gallery
+            ):
+                gallery.append(previous)
     state["research"][car.id] = {
         "carId": car.id,
         "status": result.status,
@@ -137,6 +149,8 @@ def finish_research(state, car: Car, started: float, result: ResearchResult):
         "photoUrl": result.photo.url if result.photo else None,
         "photoSourceUrl": result.photo.source_url if result.photo else None,
         "photoCaption": result.photo.caption if result.photo else None,
+        "photos": gallery,
+        "photoMessage": result.photo_message,
         "updatedAt": now,
     }
     return snapshot(state)

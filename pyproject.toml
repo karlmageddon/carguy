@@ -7,6 +7,7 @@ dependencies = [
     "uvicorn>=0.34,<1",
     "httpx>=0.28,<1",
     "google-cloud-firestore>=2.20,<3",
+    "pillow>=12,<13",
 ]
 
 [dependency-groups]

@@ -63,6 +63,9 @@ enum StudyInputLimits {
         let cars = Set(snapshot.cars.filter { !$0.removed }.map(\.id))
         return snapshot.facts.filter { $0.status == "published" && cars.contains($0.carId) }
     }
+    func photos(for carId: String) -> [ResearchPhoto] {
+        snapshot.research.first(where: { $0.carId == carId })?.photos ?? []
+    }
     func queue(exhibit: String?, now: Date = Date()) -> [Fact] {
         let cars = Set(snapshot.cars.filter { exhibit == nil || $0.exhibitId == exhibit }.map(\.id))
         return availableFacts.filter { cars.contains($0.carId) && Learning.due($0, attempts: snapshot.attempts) <= now }
@@ -92,7 +95,7 @@ enum StudyInputLimits {
         }
         var request = URLRequest(url: root.appending(path: path))
         request.httpMethod = post ? "POST" : "GET"
-        request.timeoutInterval = 180
+        request.timeoutInterval = 300
         request.setValue("Bearer " + DeviceToken.read(), forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = body

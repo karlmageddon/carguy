@@ -10,6 +10,8 @@ The timer uses a wall-clock deadline, so backgrounding does not pause the target
 
 Typed recall uses case/diacritic/punctuation normalization and explicit accepted aliases. Numeric questions require a matching supplied unit and an explicit tolerance; vague semantic answers are not silently marked correct. Multiple-choice and typed responses share grading rules. The server recomputes correctness when syncing; the UI's local grading is provisional until synced.
 
+Research seeks 3–5 distinct best-match representative photos. Each stored JPEG is at most 100 KiB; gallery bytes and credits sync with the library and persist offline. Questions for the same car cycle through that gallery independently of other cars. Your imported personal photo remains the fallback when no research gallery is available. Photo credit/license links appear with the image; fact citations remain outside quizzes.
+
 Photos can identify the car, so research is instructed not to ask identity questions that the photo/name would answer. Quiz feedback gives the correct short answer; statements, explanations, research links and citations are in fact details outside the quiz.
 
 ## Streaks and freezes
@@ -24,4 +26,4 @@ Sync is manual. Research/review first uploads the current local library. Upload 
 
 Car/exhibit conflicts use last updated timestamp; avoid editing the same car on two offline devices at the same time. Immutable attempt/session IDs make retries idempotent. The backend retains fact revisions so answers to an old revision can still sync. Reports keep suspect facts quarantined until a sourced correction or reaffirmation; unresolved provider calls do not return the fact to quizzes.
 
-This first version uploads existing history again in bounded batches and receives full snapshots. It is intended for one personal library. Incremental sync cursors, background sync, account sharing and automatic remote photo caching are future work.
+This first version uploads existing history again in bounded batches and receives full snapshots. It is intended for one personal library. Incremental sync cursors, background sync and account sharing are future work.
