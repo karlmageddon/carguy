@@ -10,7 +10,7 @@ Existing resources supplied by the owner:
 | Firestore database | `carguy` (not `(default)`) |
 | Existing OpenAI secret | `carguy-openai-key` |
 
-This managed workspace has no connected GCP identity or usable Application Default Credentials. The owner has verified these resources in Google Cloud Shell and connected the existing OpenAI secret. Revision `carguy-api-00002-n7p` reports healthy Firestore, research configured and authentication required. A real Ford Model T research request returned 503 during source/question validation; no new facts were published by that failed request. End-to-end research validation remains outstanding.
+This managed workspace has no connected GCP identity or usable Application Default Credentials. The owner has verified these resources in Google Cloud Shell and connected the existing OpenAI secret. Revision `carguy-api-00002-n7p` reports healthy Firestore, research configured and authentication required. An initial Ford Model T request failed question validation. After the question-generation fix was deployed, a completed request stored 10 sourced, validated Ford Model T facts. Its `needs_clarification` status concerns the specific vehicle's year/body style and does not prevent studying the published model-level facts. The latest model-level scope/message guidance is in the repository and takes effect on the next image deployment.
 
 ## Access prerequisites
 
@@ -136,3 +136,5 @@ uv run --frozen python -m scripts.cloud_smoke --inspect
 This performs one authenticated snapshot GET and reads only the device-token binding. Its JSON shows the saved status, application identification message and published-fact count, marked `inspectionOnly: true`. It does not call OpenAI, change data or require a new Cloud Run deployment. Existing facts may come from earlier runs; inspection alone cannot compare the preceding POST response or attribute those facts to it.
 
 Normal research smoke checks now distinguish `needs_clarification` from `ready`. Both require the returned and subsequently saved status/timestamp to agree and all published questions to validate. `ready` additionally requires published facts (exit 0). `needs_clarification` reports the identification message and can have zero facts (exit 2), without claiming the library is learning-ready. `failed`, `researching`, inconsistent snapshots and invalid facts remain failures (exit 1), even if older facts are present. Do not invent year/body details to force readiness.
+
+The owner subsequently inspected 10 persisted Ford Model T facts with sources including Ford's own model history. This verifies the live provider/output-validation/storage path. It does not establish the exact museum vehicle's identity or independently prove every automotive claim. The published facts remain available for study while specific identification is unresolved. No additional Ford research request is needed just to start using the iOS app.

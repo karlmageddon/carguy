@@ -135,6 +135,8 @@ struct CarDetail: View {
                 CarPhoto(car: car)
                 Section("Identification") {
                     Text(car.notes.isEmpty ? "Add placard details to distinguish the museum vehicle from its model." : car.notes)
+                    Text("Research uses the car name and text notes. Your selected photo is saved for offline study.").font(.caption)
+                    Text("To answer a research question, tap Edit and add details or transcribe the placard in identification notes.").font(.caption)
                     if let research = store.snapshot.research.first(where: { $0.carId == car.id }) {
                         Text(research.message)
                         if let source = research.photoSourceUrl, let url = URL(string: source) {
