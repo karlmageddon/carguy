@@ -103,4 +103,19 @@ The reviewed transcription becomes identification notes with a museum-plaque lab
 
 Only the reviewed car name and identification notes are sent to OpenAI by research; plaque image bytes stay in the app/API library. Offline saving does not require a configured API. If online research fails, the saved entry remains available to retry later.
 
-Validation for this change includes actual on-device OCR of a generated plaque image, identification-heading parsing, invalid-image handling, compact JPEG output, separate plaque/quiz-photo persistence, API round-trip and size validation, and confirmation that photo bytes are absent from provider research payloads. Physical iPhone camera capture has not yet been validated. System photo-picker automation in the simulator was unavailable during the UI check; automated OCR/persistence tests passed, and the add/review screen and photo-picker presentation were inspected.
+Validation for this change includes actual on-device OCR of a generated plaque image, identification-heading parsing, invalid-image handling, compact JPEG output, separate plaque/quiz-photo persistence, API round-trip and size validation, and confirmation that photo bytes are absent from provider research payloads. Physical iPhone camera capture has not yet been validated. The initial UI check could not automate system photo selection; the subsequent production verification below completed the import, review, save, sync and research flow.
+
+
+## Verified plaque import and research — October 27, 2026
+
+[PR #3](https://github.com/karlmageddon/carguy/pull/3) passed CI and merged as `de0f4f5`. Its [Actions deployment](https://github.com/karlmageddon/carguy/actions/runs/40572191185) passed backend checks and all 19 iOS simulator tests, then deployed healthy revision `carguy-api-00006-nz8` with 100% of traffic. No CI or deployment fixes were needed.
+
+The paired iPhone 16 Pro simulator running iOS 18.6 imported a generated image headed “DELOREAN DMC-12” and explicitly labeled “PLAQUE IMPORT TEST” and “Synthetic test image, not a museum placard.” This was a test fixture, not evidence about a real museum exhibit. On-device OCR populated the name and full transcription. After reviewing the text, the name was changed to **DeLorean DMC-12 (plaque import test)** and **Save car** was used while the API URL was temporarily unreachable.
+
+The car, reviewed identification notes and separate 143,696-byte plaque JPEG survived an offline app restart. The plaque was visible in car details and `photoData` remained empty, confirming that it was not used as a personal quiz photo. After restoring the saved production URL, Sync succeeded. An independent API snapshot matched the saved car, transcription and plaque bytes exactly.
+
+Research was then started from that car's detail screen. The first request returned 503 because the source-evidence validator rejected an unverified source URL; it published no facts and preserved the saved entry. A retry with the same reviewed notes succeeded with `ready`, 11 published facts and five representative research photos. The result persisted in the API and matched the simulator, including after a final app restart.
+
+Fingerprint comparisons confirmed that all pre-existing cars, facts, answers and completed sessions remained unchanged. The clearly labeled test entry was retained, and the simulator was left on its researched details. The device token stayed out of chat, logs and commits; temporary verification scripts, identifiers and fingerprints were removed.
+
+This confirms saved-photo import, actual on-device OCR, editable review, offline save, restart persistence, production sync and subsequent research. **Save car**, Sync and **Research with OpenAI** were exercised as separate steps; the combined **Save and research** button was not separately tested end to end. Physical iPhone camera capture, full network disconnection and OCR accuracy on real museum photographs remain unverified.
