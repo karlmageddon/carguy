@@ -1,6 +1,6 @@
 import SwiftUI
 
-@main struct CarguyApp: App {
+@main @MainActor struct CarguyApp: App {
     @StateObject private var store = StudyStore()
     var body: some Scene {
         WindowGroup {

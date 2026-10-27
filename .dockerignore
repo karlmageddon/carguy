@@ -6,3 +6,9 @@ __pycache__
 .pytest_cache
 .ruff_cache
 tests
+.git
+.github
+ios
+docs
+scripts
+README.md

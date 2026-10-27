@@ -9,18 +9,18 @@ import SwiftUI
     private let file: URL
     var endpoint: String { UserDefaults.standard.string(forKey: "apiURL") ?? "" }
 
-    init() {
-        file = URL.documentsDirectory.appending(path: "carguy.json")
+    init(file: URL? = nil) {
+        self.file = file ?? URL.documentsDirectory.appending(path: "carguy.json")
         do {
-            if FileManager.default.fileExists(atPath: file.path) {
-                snapshot = try JSONDecoder().decode(Snapshot.self, from: Data(contentsOf: file))
+            if FileManager.default.fileExists(atPath: self.file.path) {
+                snapshot = try JSONDecoder().decode(Snapshot.self, from: Data(contentsOf: self.file))
             } else { snapshot = .starter; persist() }
         } catch { diskFailed = true; message = "Could not open saved study data. Your file has been preserved: \(error.localizedDescription)" }
     }
     func persist() {
         guard !diskFailed else { return }
         do { try JSONEncoder().encode(snapshot).write(to: file, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication]) }
-        catch { message = "Could not save study data: \(error.localizedDescription)" }
+        catch { diskFailed = true; message = "Could not save study data. Stop studying and restore device storage before restarting: \(error.localizedDescription)" }
     }
     func saveCar(_ car: Car) {
         var car = car

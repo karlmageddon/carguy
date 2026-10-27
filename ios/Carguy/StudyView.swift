@@ -66,7 +66,7 @@ struct QuizView: View {
                     if finished {
                         Text("Session complete").font(.largeTitle.bold())
                         Text("\(correctCount) of \(answerCount) correct")
-                        Text(answerCount == 0 ? "No answers recorded. This session did not count toward your streak." : "Progress saved on this device. Sync when online.")
+                        Text(store.diskFailed ? "Storage failed. Progress is not safely saved; resolve the storage error before continuing." : (answerCount == 0 ? "No answers recorded. This session did not count toward your streak." : "Progress saved on this device. Sync when online."))
                         Button("Done") { dismiss() }.buttonStyle(.borderedProminent)
                     } else {
                         Text("\(max(0, Int(deadline.timeIntervalSince(now)))) seconds remaining").monospacedDigit().accessibilityLabel("Time remaining")
@@ -111,7 +111,7 @@ struct QuizView: View {
             .onAppear { deadline = Date().addingTimeInterval(Double(minutes * 60)); advance() }
             .onReceive(timer) { date in
                 now = date
-                if !finished && date >= deadline { finish() }
+                if !finished && (date >= deadline || store.diskFailed) { finish() }
             }
         }
     }
@@ -121,6 +121,7 @@ struct QuizView: View {
         let correct = store.record(fact: fact, response: response, sessionId: sessionId)
         result = correct; answerCount += 1
         if correct { correctCount += 1 }
+        if answerCount >= 500 { finish() }
     }
     private func advance() {
         fact = store.queue(exhibit: exhibit).first
