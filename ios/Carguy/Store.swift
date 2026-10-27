@@ -1,6 +1,11 @@
 import Foundation
 import SwiftUI
 
+enum StudyInputLimits {
+    static let exhibitName = 120
+    static let response = 1000
+}
+
 @MainActor final class StudyStore: ObservableObject {
     @Published var snapshot = Snapshot()
     @Published var message = ""
@@ -22,7 +27,12 @@ import SwiftUI
         do { try JSONEncoder().encode(snapshot).write(to: file, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication]) }
         catch { diskFailed = true; message = "Could not save study data. Stop studying and restore device storage before restarting: \(error.localizedDescription)" }
     }
-    func saveCar(_ car: Car) {
+    @discardableResult func saveCar(_ car: Car) -> Bool {
+        guard !busy else {
+            message = "Wait for sync or research to finish before saving car changes. Your unsaved edits stay in the editor."
+            return false
+        }
+        guard !diskFailed else { return false }
         var car = car
         if let old = snapshot.cars.first(where: { $0.id == car.id }), old.exhibitId != car.exhibitId, let previous = old.exhibitId {
             car.previousExhibitIds = Array(Set(old.previousExhibitIds + [previous])).sorted()
@@ -31,10 +41,18 @@ import SwiftUI
         if let index = snapshot.cars.firstIndex(where: { $0.id == car.id }) { snapshot.cars[index] = car }
         else { snapshot.cars.append(car) }
         persist()
+        return !diskFailed
     }
-    func saveExhibit(_ name: String) {
-        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+    @discardableResult func saveExhibit(_ name: String) -> Bool {
+        guard !diskFailed else { return false }
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        // The API counts Unicode code points, rather than Swift grapheme clusters.
+        guard !name.isEmpty, name.unicodeScalars.count <= StudyInputLimits.exhibitName else {
+            message = "Enter an exhibit name using 1–120 characters."
+            return false
+        }
         snapshot.exhibits.append(Exhibit(name: name)); persist()
+        return !diskFailed
     }
     func report(_ fact: Fact, reason: String) {
         snapshot.reports.append(FactReport(factId: fact.id, factRevision: fact.revision, reason: reason))
@@ -50,10 +68,16 @@ import SwiftUI
         return availableFacts.filter { cars.contains($0.carId) && Learning.due($0, attempts: snapshot.attempts) <= now }
             .sorted { Learning.due($0, attempts: snapshot.attempts) < Learning.due($1, attempts: snapshot.attempts) }
     }
-    func record(fact: Fact, response: String, sessionId: String) -> Bool {
+    func record(fact: Fact, response: String, sessionId: String) -> Bool? {
+        guard !diskFailed else { return nil }
+        guard !response.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              response.unicodeScalars.count <= StudyInputLimits.response else {
+            message = "Enter an answer using 1–1,000 characters. Your answer has not been recorded or changed."
+            return nil
+        }
         let correct = Learning.grade(response, fact: fact)
         snapshot.attempts.append(Attempt(sessionId: sessionId, factId: fact.id, factRevision: fact.revision, response: response, correct: correct))
-        persist(); return correct
+        persist(); return diskFailed ? nil : correct
     }
     func complete(sessionId: String) {
         let attempts = snapshot.attempts.filter { $0.sessionId == sessionId }

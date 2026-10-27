@@ -45,7 +45,7 @@ struct GarageView: View {
                     }
                 }
                 Section {
-                    Button("Add car", systemImage: "plus") { addingCar = true }
+                    Button("Add car", systemImage: "plus") { addingCar = true }.disabled(store.busy)
                     Button("Add exhibit", systemImage: "rectangle.stack.badge.plus") { addingExhibit = true }
                     Button("Sync", systemImage: "arrow.triangle.2.circlepath") { Task { await store.sync() } }.disabled(store.busy)
                 }
@@ -55,8 +55,13 @@ struct GarageView: View {
             .sheet(isPresented: $addingCar) { CarEditor(car: Car(name: "", exhibitId: exhibit)) }
             .alert("New exhibit", isPresented: $addingExhibit) {
                 TextField("Exhibit name", text: $exhibitName)
-                Button("Save") { store.saveExhibit(exhibitName); exhibitName = "" }
+                Button("Save") {
+                    if store.saveExhibit(exhibitName) { exhibitName = "" }
+                }
+                .disabled(exhibitName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || exhibitName.trimmingCharacters(in: .whitespacesAndNewlines).unicodeScalars.count > StudyInputLimits.exhibitName)
                 Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Use 1–120 characters for the exhibit name.")
             }
         }.disabled(store.diskFailed)
     }
@@ -70,42 +75,51 @@ struct CarEditor: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Car name", text: $car.name)
-                TextField("Identification notes / placard text", text: $car.notes, axis: .vertical)
-                Picker("Exhibit", selection: $car.exhibitId) {
-                    Text("Unassigned").tag(nil as String?)
-                    ForEach(store.snapshot.exhibits.filter { !$0.archived }) { Text($0.name).tag(Optional($0.id)) }
+                if store.busy {
+                    Text("Wait for sync or research to finish before editing. Your unsaved changes stay here.").font(.caption)
                 }
-                Toggle("Removed from exhibit", isOn: $car.removed)
-                Text("Removing a car excludes it from quizzes and preserves facts, attempts and exhibit history.").font(.caption)
-                CarPhoto(car: car)
-                PhotosPicker("Choose photo", selection: $photo, matching: .images)
-                    .onChange(of: photo) { _, selected in
-                        Task {
-                            do {
-                                guard let data = try await selected?.loadTransferable(type: Data.self), let original = UIImage(data: data) else { return }
-                                let factor = min(1, 1000 / max(original.size.width, original.size.height))
-                                let size = CGSize(width: original.size.width * factor, height: original.size.height * factor)
-                                let format = UIGraphicsImageRendererFormat(); format.scale = 1
-                                let scaled = UIGraphicsImageRenderer(size: size, format: format).image { _ in original.draw(in: CGRect(origin: .zero, size: size)) }
-                                var encoded: Data?
-                                for quality in [0.8, 0.6, 0.4, 0.2] {
-                                    if let candidate = scaled.jpegData(compressionQuality: quality), candidate.count <= 250 * 1024 { encoded = candidate; break }
-                                }
-                                guard let encoded else { error = "Choose a smaller photo (250 KiB after compression)."; return }
-                                car.photoData = encoded.base64EncodedString()
-                            } catch { self.error = error.localizedDescription }
-                        }
+                Section {
+                    TextField("Car name", text: $car.name)
+                    TextField("Identification notes / placard text", text: $car.notes, axis: .vertical)
+                    Picker("Exhibit", selection: $car.exhibitId) {
+                        Text("Unassigned").tag(nil as String?)
+                        ForEach(store.snapshot.exhibits.filter { !$0.archived }) { Text($0.name).tag(Optional($0.id)) }
                     }
-                if car.photoData != nil { Button("Remove photo", role: .destructive) { car.photoData = nil } }
+                    Toggle("Removed from exhibit", isOn: $car.removed)
+                    Text("Removing a car excludes it from quizzes and preserves facts, attempts and exhibit history.").font(.caption)
+                    CarPhoto(car: car)
+                    PhotosPicker("Choose photo", selection: $photo, matching: .images)
+                        .onChange(of: photo) { _, selected in
+                            Task {
+                                do {
+                                    guard let data = try await selected?.loadTransferable(type: Data.self), let original = UIImage(data: data) else { return }
+                                    let factor = min(1, 1000 / max(original.size.width, original.size.height))
+                                    let size = CGSize(width: original.size.width * factor, height: original.size.height * factor)
+                                    let format = UIGraphicsImageRendererFormat(); format.scale = 1
+                                    let scaled = UIGraphicsImageRenderer(size: size, format: format).image { _ in original.draw(in: CGRect(origin: .zero, size: size)) }
+                                    var encoded: Data?
+                                    for quality in [0.8, 0.6, 0.4, 0.2] {
+                                        if let candidate = scaled.jpegData(compressionQuality: quality), candidate.count <= 250 * 1024 { encoded = candidate; break }
+                                    }
+                                    guard let encoded else { error = "Choose a smaller photo (250 KiB after compression)."; return }
+                                    car.photoData = encoded.base64EncodedString()
+                                } catch { self.error = error.localizedDescription }
+                            }
+                        }
+                    if car.photoData != nil { Button("Remove photo", role: .destructive) { car.photoData = nil } }
+                }.disabled(store.busy || store.diskFailed)
                 if !error.isEmpty { Text(error).foregroundStyle(.red) }
             }
             .navigationTitle("Car details")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { car.name = car.name.trimmingCharacters(in: .whitespacesAndNewlines); store.saveCar(car); dismiss() }
-                        .disabled(car.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || car.name.count > 200 || car.notes.count > 3000)
+                    Button("Save") {
+                        car.name = car.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if store.saveCar(car) { dismiss() }
+                        else { error = store.message }
+                    }
+                    .disabled(store.busy || store.diskFailed || car.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || car.name.count > 200 || car.notes.count > 3000)
                 }
             }
         }
@@ -149,7 +163,7 @@ struct CarDetail: View {
                 }
             }
             .navigationTitle(car.name)
-            .toolbar { Button("Edit") { editing = true } }
+            .toolbar { Button("Edit") { editing = true }.disabled(store.busy) }
             .sheet(isPresented: $editing) { CarEditor(car: car) }
         }
     }

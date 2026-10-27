@@ -53,6 +53,7 @@ struct QuizView: View {
     @State private var fact: Fact?
     @State private var choices: [String] = []
     @State private var response = ""
+    @State private var answerError = ""
     @State private var result: Bool?
     @State private var finished = false
     @State private var correctCount = 0
@@ -79,13 +80,18 @@ struct QuizView: View {
                             if typed {
                                 TextField("Your answer", text: $response).textFieldStyle(.roundedBorder)
                                     .disabled(result != nil).onSubmit { submit() }
+                                    .onChange(of: response) { _, _ in answerError = "" }
+                                if response.unicodeScalars.count > StudyInputLimits.response && answerError.isEmpty {
+                                    Text("Keep your answer within 1,000 characters. Your text has not been changed.").foregroundStyle(.red)
+                                }
                                 Button("Check answer") { submit() }
-                                    .disabled(result != nil || response.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                                    .disabled(result != nil || response.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || response.unicodeScalars.count > StudyInputLimits.response)
                             } else {
                                 ForEach(choices, id: \.self) { choice in
                                     Button(choice) { response = choice; submit() }.buttonStyle(.bordered).disabled(result != nil)
                                 }
                             }
+                            if !answerError.isEmpty { Text(answerError).foregroundStyle(.red) }
                             if let result {
                                 Label(result ? "Correct" : "Keep practicing", systemImage: result ? "checkmark.circle" : "arrow.clockwise")
                                 Text("Answer: \(fact.answer)")
@@ -118,7 +124,10 @@ struct QuizView: View {
     private func submit() {
         guard result == nil, let fact, Date() < deadline,
               store.availableFacts.contains(where: { $0.id == fact.id && $0.revision == fact.revision }) else { advance(); return }
-        let correct = store.record(fact: fact, response: response, sessionId: sessionId)
+        guard let correct = store.record(fact: fact, response: response, sessionId: sessionId) else {
+            answerError = store.message
+            return
+        }
         result = correct; answerCount += 1
         if correct { correctCount += 1 }
         if answerCount >= 500 { finish() }
@@ -126,7 +135,7 @@ struct QuizView: View {
     private func advance() {
         fact = store.queue(exhibit: exhibit).first
         choices = fact?.choices.shuffled() ?? []
-        response = ""; result = nil
+        response = ""; result = nil; answerError = ""
     }
     private func finish() { store.complete(sessionId: sessionId); finished = true }
 }
