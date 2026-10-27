@@ -97,7 +97,7 @@ Record the ready revision name before changing the service. To roll traffic back
 
 ## Diagnosing rejected research output
 
-For the error “Research did not pass source and question validation”, the provider returned a completed response but the backend rejected its structured facts, quiz semantics or source evidence. The existing API response combines those causes; its current logs do not record the underlying rule.
+For the error “Research did not pass source and question validation”, the provider returned a completed response but the backend rejected its structured facts, quiz semantics or source evidence. The API response combines those causes. The recovered image does not record the underlying rule; updated images log a bounded `Research output rejected:` diagnostic containing only rule identifiers, field locations and fixed validator messages.
 
 In an authenticated Google Cloud SDK shell, from a current checkout with dependencies installed, run:
 
@@ -108,3 +108,19 @@ uv run python -m scripts.diagnose_research
 This reads the deployed service's secret references, uses the referenced credentials internally, fetches the saved Ford Model T identification, and makes **one paid diagnostic OpenAI request**. It does not write facts or alter the live library. It prints only safe validation field names, rule identifiers and allowlisted validator messages. Do not print raw exceptions or provider bodies: validation errors can include input data. Share the diagnostic JSON, not credentials.
 
 A fresh diagnostic response can pass even after a previous output failed; generation is nondeterministic. Diagnose the rule before changing prompts or retrying. Keep all source-evidence and question checks in place.
+
+## Deploying the question-generation fix
+
+The owner's direct diagnostic reproduced three questions rejected for duplicated choices or omission of the exact canonical answer. The backend now requests a pool of incorrect alternatives and assembles the correct choice itself, then runs the original question and source validators. This removes the requirement for OpenAI to copy the answer identically into two fields. No source claims are relaxed, and no existing learning history changes.
+
+From the current checkout in Google Cloud Shell:
+
+```sh
+git pull --ff-only
+bash scripts/deploy.sh --image-only
+uv run --frozen python -m scripts.cloud_smoke
+```
+
+If uv was installed in the diagnostic bootstrap environment, use `.bootstrap/bin/uv` instead of `uv`. The image-only deployment preserves the existing service account, secret bindings and versions (including device token version `1`), environment variables, ingress, IAM policy and timeout. It still builds and publishes a new image through Cloud Build.
+
+The smoke command reads only the device-token secret, makes one paid research request for the existing Ford Model T entry, fetches the stored result again, and validates each published question. It never reads the OpenAI key locally and does not seed or overwrite cars. Success is evidence of the live research/storage path; it does not validate every historical claim or the iOS client.

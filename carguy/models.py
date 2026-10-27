@@ -73,16 +73,19 @@ class NumericAnswer(Model):
     units: list[UnitScale] = Field(min_length=1, max_length=20)
 
 
-class FactDraft(Model):
+class _FactContent(Model):
     category: Literal["technical", "history", "story", "fundamentals"]
     statement: str = Field(min_length=1, max_length=1000)
     prompt: str = Field(min_length=1, max_length=500)
     answer: str = Field(min_length=1, max_length=200)
     accepted_answers: list[str] = Field(max_length=30)
-    choices: list[str] = Field(min_length=2, max_length=6)
     explanation: str = Field(min_length=1, max_length=2000)
     sources: list[Source] = Field(min_length=1, max_length=10)
     numeric_answer: NumericAnswer | None
+
+
+class FactDraft(_FactContent):
+    choices: list[str] = Field(min_length=2, max_length=6)
 
     @model_validator(mode="after")
     def valid_choices(self):

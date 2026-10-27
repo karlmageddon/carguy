@@ -3,6 +3,7 @@
 from pydantic import ValidationError
 
 from .models import ResearchResult, ReviewResult
+from .research_models import ResearchProposal, ReviewProposal
 
 # These messages are constants raised by our validators, never provider text.
 VALIDATOR_MESSAGES = frozenset(
@@ -14,6 +15,7 @@ VALIDATOR_MESSAGES = frozenset(
         "Answer variants must be short, nonempty strings",
         "Ready research must contain at least one sourced fact",
         "A resolved report needs a sourced replacement or reaffirmed fact",
+        "Research needs three distinct incorrect alternatives",
     }
 )
 
@@ -30,7 +32,7 @@ def _schema_fields() -> frozenset[str]:
             for child in value:
                 walk(child)
 
-    for model in (ResearchResult, ReviewResult):
+    for model in (ResearchResult, ReviewResult, ResearchProposal, ReviewProposal):
         walk(model.model_json_schema(by_alias=True))
     return frozenset(fields)
 
