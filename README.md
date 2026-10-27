@@ -59,7 +59,7 @@ The library begins with Detroit Electric Model 61 Brougham, Lancia Delta S4, 193
 
 See [deployment](docs/DEPLOYMENT.md), [API contract](docs/API.md) and [recovery record](docs/RECOVERY.md).
 
-The test workflow includes an optional Cloud Run deployment job gated on backend and iOS tests. It remains disabled until Carguy-specific identity federation and repository variables are configured; see [GitHub Actions deployment setup](docs/GITHUB_ACTIONS.md).
+The test workflow includes an optional Cloud Run deployment job gated on backend and iOS tests. Carguy-specific identity federation and repository variables control activation; see [GitHub Actions deployment setup](docs/GITHUB_ACTIONS.md).
 
 Verified on the Mac on October 26, 2026: the `Carguy` scheme builds and runs on an iPhone 16 Pro simulator with iOS 18.6 using Xcode 16.4. All 12 iOS tests, 64 backend/deployment-tool tests and Ruff pass. The test target now generates its Info.plist through `ios/project.yml`. Pairing and sync with the existing Cloud Run API survive an app restart.
 
