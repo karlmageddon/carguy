@@ -47,7 +47,7 @@ open ios/Carguy.xcodeproj
 
 Choose your signing team in Xcode and run the `Carguy` scheme. Run the `CarguyTests` suite on an available iPhone simulator. GitHub Actions also defines a macOS simulator job; a configured job is not evidence of a successful build.
 
-In the app's Settings, enter the HTTPS Cloud Run URL and save its device token to Keychain. Then Sync. The OpenAI key belongs on the backend, never in the iOS app. Choose your own or licensed car photos in Garage → Edit; selected JPEGs are compressed below 250 KiB and stored with the offline library. Research photo links are references, not automatically downloaded or represented as licensed images.
+In the app's Settings, enter the HTTPS Cloud Run URL and save its device token to Keychain. Then Sync. The OpenAI key belongs on the backend, never in the iOS app. Choose your own or licensed car photos in Garage → Edit; selected JPEGs are compressed below 250 KiB and stored with the offline library. Research also finds up to five distinct best-match Commons photos and stores compact JPEG copies with source, attribution and reuse-license details in the database. Sync saves the gallery on the device for offline use, and quizzes rotate photos for each car. Images are labeled representative because the exact vehicle or variant may differ. Research targets 3–5 photos but retains smaller usable galleries when fewer are available.
 
 ## Starter identifications
 

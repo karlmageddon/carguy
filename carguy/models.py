@@ -157,6 +157,31 @@ class FactReport(Model):
     resolution: str = Field(default="", max_length=3000)
 
 
+class PhotoCandidate(Model):
+    url: str = Field(max_length=2000)
+    source_url: str = Field(max_length=2000)
+    caption: str = Field(max_length=1000)
+
+    _urls = field_validator("url", "source_url")(Source.https_only.__func__)
+
+
+class ResearchPhoto(PhotoCandidate):
+    attribution: str = Field(min_length=1, max_length=1000)
+    license: str = Field(min_length=1, max_length=200)
+    license_url: str = Field(max_length=2000)
+    image_data: str = Field(max_length=140000)
+
+    _license_url = field_validator("license_url")(Source.https_only.__func__)
+
+    @field_validator("image_data")
+    @classmethod
+    def compact_jpeg(cls, value: str) -> str:
+        data = base64.b64decode(value, validate=True)
+        if len(data) > 100 * 1024 or not data.startswith(b"\xff\xd8\xff"):
+            raise ValueError("Research photo must be a JPEG no larger than 100 KiB")
+        return value
+
+
 class ResearchState(Model):
     car_id: Identifier
     status: Literal["researching", "ready", "needs_clarification", "failed"]
@@ -164,6 +189,8 @@ class ResearchState(Model):
     photo_url: str | None = None
     photo_source_url: str | None = None
     photo_caption: str | None = None
+    photos: list[ResearchPhoto] = Field(default_factory=list, max_length=5)
+    photo_message: str = Field(default="", max_length=500)
     updated_at: Timestamp
 
 
@@ -185,19 +212,14 @@ class SyncRequest(Model):
     reports: list[FactReport] = Field(default_factory=list, max_length=1000)
 
 
-class PhotoCandidate(Model):
-    url: str
-    source_url: str
-    caption: str
-
-    _urls = field_validator("url", "source_url")(Source.https_only.__func__)
-
-
 class ResearchResult(Model):
     status: Literal["ready", "needs_clarification"]
     message: str = Field(max_length=3000)
     facts: list[FactDraft] = Field(max_length=20)
     photo: PhotoCandidate | None
+    photo_query: str | None = Field(default=None, max_length=120)
+    photos: list[ResearchPhoto] = Field(default_factory=list, max_length=5)
+    photo_message: str = Field(default="", max_length=500)
 
     @model_validator(mode="after")
     def ready_has_facts(self):

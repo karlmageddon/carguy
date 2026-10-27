@@ -71,3 +71,10 @@ Before sync, the simulator and authenticated API snapshot matched: 7 cars, 10 fa
 The two correct answers and one missed answer retained their grades, fact revisions and session references. Fact content and citations were unchanged. In the app, Ford Model T showed its published facts and “3 answers retained”; Study showed the completed session, a one-day streak and 8 facts due.
 
 No new answers, sessions or research requests were created during this check, and no fixes were needed. The device token remained out of chat, logs and commits; temporary verification scripts and record fingerprints were removed. This verifies authenticated sync and existing-data preservation after deployment, without extending the earlier offline, photo or physical-device test coverage.
+
+
+## Research photo galleries
+
+Research targets 3–5 different best-match photos and labels them as representative when the precise year, variant or exhibited vehicle is uncertain. It stores the available matches even when fewer than three can be found. Sync saves the compact image copies and credits with the local library, so the gallery works without internet access. Existing personal photos are preserved as a fallback for cars without a gallery.
+
+Garage → car → Photos includes **Next photo** and source/license credits. During study, successive questions about the same car cycle through its photos; each car has its own rotation. Existing cars need another Research after the gallery-capable backend is deployed to populate photos. No existing facts, answers or sessions need to be reset.

@@ -60,6 +60,24 @@ struct FactReport: Codable, Identifiable, Hashable {
     var status = "pending"
     var resolution = ""
 }
+struct ResearchPhoto: Codable, Hashable, Identifiable {
+    var url: String
+    var sourceUrl: String
+    var caption: String
+    var attribution: String
+    var license: String
+    var licenseUrl: String
+    var imageData: String
+    var id: String { sourceUrl }
+}
+struct CarPhotoRotation {
+    private var turns: [String: Int] = [:]
+    mutating func nextIndex(carId: String, count: Int) -> Int {
+        let turn = turns[carId, default: 0]
+        turns[carId] = turn + 1
+        return turn % max(1, count)
+    }
+}
 struct ResearchState: Codable, Hashable {
     var carId: String
     var status: String
@@ -67,6 +85,9 @@ struct ResearchState: Codable, Hashable {
     var photoUrl: String?
     var photoSourceUrl: String?
     var photoCaption: String?
+    // Optional for libraries saved before photo galleries were introduced.
+    var photos: [ResearchPhoto]?
+    var photoMessage: String?
     var updatedAt: Double
 }
 struct Snapshot: Codable {

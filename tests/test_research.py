@@ -52,7 +52,7 @@ def test_openai_evidence_validation(monkeypatch, verified, completed):
                     {
                         "type": "output_text",
                         "text": json.dumps(
-                            result.model_dump(by_alias=True) | {"facts": [proposed_fact(draft())]}
+                            result.model_dump(by_alias=True, exclude={"photos", "photo_message"}) | {"facts": [proposed_fact(draft())]}
                         ),
                         "annotations": [],
                     }
@@ -348,3 +348,10 @@ def test_research_sends_only_text_identification_and_preserves_scope_decision(mo
     assert result.status == status
     assert len(result.facts) == 1
     assert len(requests) == 1
+
+
+@pytest.fixture(autouse=True)
+def no_external_photo_requests(monkeypatch):
+    async def no_photos(query):
+        return []
+    monkeypatch.setattr("carguy.research.find_photos", no_photos)

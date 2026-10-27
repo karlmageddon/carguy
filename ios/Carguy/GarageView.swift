@@ -4,14 +4,27 @@ import UIKit
 
 struct CarPhoto: View {
     var car: Car
+    var photos: [ResearchPhoto] = []
+    var index = 0
+    private var selected: ResearchPhoto? { photos.isEmpty ? nil : photos[index % photos.count] }
     var body: some View {
-        Group {
-            if let encoded = car.photoData, let data = Data(base64Encoded: encoded), let image = UIImage(data: data) {
-                Image(uiImage: image).resizable().scaledToFit()
+        VStack(spacing: 4) {
+            if let photo = selected, let data = Data(base64Encoded: photo.imageData), let image = UIImage(data: data) {
+                Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 220)
+                    .accessibilityLabel("Photo of \(car.name)")
+                Text("Representative photo \(index % photos.count + 1) of \(photos.count)").font(.caption)
+                Text(photo.attribution).font(.caption2).lineLimit(2)
+                HStack {
+                    if let source = URL(string: photo.sourceUrl) { Link("Photo source", destination: source) }
+                    if let license = URL(string: photo.licenseUrl) { Link(photo.license, destination: license) }
+                }.font(.caption2)
+            } else if let encoded = car.photoData, let data = Data(base64Encoded: encoded), let image = UIImage(data: data) {
+                Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 220)
+                    .accessibilityLabel("Photo of \(car.name)")
             } else {
-                ContentUnavailableView("Add a car photo", systemImage: "camera", description: Text("Your selected photo is saved for offline quizzes."))
+                ContentUnavailableView("Add a car photo", systemImage: "camera", description: Text("Research finds representative photos, or choose your own in Edit. Photos are saved for offline quizzes."))
             }
-        }.frame(maxWidth: .infinity, maxHeight: 220).accessibilityLabel("Photo of \(car.name)")
+        }.frame(maxWidth: .infinity)
     }
 }
 struct GarageView: View {
@@ -129,17 +142,29 @@ struct CarDetail: View {
     @EnvironmentObject var store: StudyStore
     var carId: String
     @State private var editing = false
+    @State private var photoIndex = 0
     var body: some View {
         if let car = store.snapshot.cars.first(where: { $0.id == carId }) {
             List {
-                CarPhoto(car: car)
+                Section("Photos") {
+                    let photos = store.photos(for: car.id)
+                    CarPhoto(car: car, photos: photos, index: photoIndex)
+                    if photos.count > 1 {
+                        Button("Next photo") { photoIndex = (photoIndex + 1) % photos.count }
+                    }
+                    if !photos.isEmpty {
+                        Text(photos[photoIndex % photos.count].caption).font(.caption)
+                        Text("Saved on this device for offline study. Exact vehicle and variant may differ.").font(.caption)
+                    }
+                }
                 Section("Identification") {
                     Text(car.notes.isEmpty ? "Add placard details to distinguish the museum vehicle from its model." : car.notes)
                     Text("Research uses the car name and text notes. Your selected photo is saved for offline study.").font(.caption)
                     Text("To answer a research question, tap Edit and add details or transcribe the placard in identification notes.").font(.caption)
                     if let research = store.snapshot.research.first(where: { $0.carId == car.id }) {
                         Text(research.message)
-                        if let source = research.photoSourceUrl, let url = URL(string: source) {
+                        if let message = research.photoMessage, !message.isEmpty { Text(message).font(.caption) }
+                        if (research.photos ?? []).isEmpty, let source = research.photoSourceUrl, let url = URL(string: source) {
                             Link(research.photoCaption ?? "Research photo reference", destination: url)
                             Text("Choose a licensed or personal photo in Edit to save it offline.").font(.caption)
                         }

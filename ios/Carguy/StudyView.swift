@@ -59,6 +59,8 @@ struct QuizView: View {
     @State private var correctCount = 0
     @State private var answerCount = 0
     @State private var now = Date()
+    @State private var photoIndex = 0
+    @State private var photoRotation = CarPhotoRotation()
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     var body: some View {
         NavigationStack {
@@ -74,7 +76,7 @@ struct QuizView: View {
                         if let fact {
                             if let car = store.snapshot.cars.first(where: { $0.id == fact.carId }) {
                                 Text(car.name).font(.headline)
-                                CarPhoto(car: car)
+                                CarPhoto(car: car, photos: store.photos(for: car.id), index: photoIndex)
                             }
                             Text(fact.prompt).font(.title2)
                             if typed {
@@ -134,6 +136,9 @@ struct QuizView: View {
     }
     private func advance() {
         fact = store.queue(exhibit: exhibit).first
+        if let carId = fact?.carId {
+            photoIndex = photoRotation.nextIndex(carId: carId, count: store.photos(for: carId).count)
+        }
         choices = fact?.choices.shuffled() ?? []
         response = ""; result = nil; answerError = ""
     }

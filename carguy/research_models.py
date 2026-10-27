@@ -43,6 +43,7 @@ class ResearchProposal(Model):
     message: str = Field(max_length=3000)
     facts: list[FactProposal] = Field(max_length=20)
     photo: PhotoCandidate | None
+    photo_query: str | None = Field(default=None, max_length=120)
 
     def validated_result(self) -> ResearchResult:
         return ResearchResult.model_validate(
