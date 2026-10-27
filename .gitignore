@@ -9,3 +9,4 @@ DerivedData/
 xcuserdata/
 .env
 .bootstrap/
+gha-creds-*.json
