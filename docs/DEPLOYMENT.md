@@ -10,7 +10,7 @@ Existing resources supplied by the owner:
 | Firestore database | `carguy` (not `(default)`) |
 | Existing OpenAI secret | `carguy-openai-key` |
 
-These resources have **not been inspected or updated from this workspace**: no GCP identity is connected and Application Default Credentials are unavailable. Do not interpret local test success as a cloud deployment or provider test.
+This managed workspace has no connected GCP identity or usable Application Default Credentials. The owner has verified these resources in Google Cloud Shell and connected the existing OpenAI secret. Revision `carguy-api-00002-n7p` reports healthy Firestore, research configured and authentication required. A real Ford Model T research request returned 503 during source/question validation; no new facts were published by that failed request. End-to-end research validation remains outstanding.
 
 ## Access prerequisites
 
@@ -94,3 +94,17 @@ These are distinct from the Cloud Run service's own VPC/egress configuration. Ad
 ## Rollback
 
 Record the ready revision name before changing the service. To roll traffic back after diagnosing a bad revision, use the Cloud Run console or `gcloud run services update-traffic carguy-api --project orakle-1792087003 --region us-west1 --to-revisions=<previous-ready-revision>=100`. This changes traffic, not stored learning data. Do not delete the Firestore database or reset secret versions as a rollback mechanism.
+
+## Diagnosing rejected research output
+
+For the error “Research did not pass source and question validation”, the provider returned a completed response but the backend rejected its structured facts, quiz semantics or source evidence. The existing API response combines those causes; its current logs do not record the underlying rule.
+
+In an authenticated Google Cloud SDK shell, from a current checkout with dependencies installed, run:
+
+```sh
+uv run python -m scripts.diagnose_research
+```
+
+This reads the deployed service's secret references, uses the referenced credentials internally, fetches the saved Ford Model T identification, and makes **one paid diagnostic OpenAI request**. It does not write facts or alter the live library. It prints only safe validation field names, rule identifiers and allowlisted validator messages. Do not print raw exceptions or provider bodies: validation errors can include input data. Share the diagnostic JSON, not credentials.
+
+A fresh diagnostic response can pass even after a previous output failed; generation is nondeterministic. Diagnose the rule before changing prompts or retrying. Keep all source-evidence and question checks in place.
