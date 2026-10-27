@@ -124,3 +124,15 @@ uv run --frozen python -m scripts.cloud_smoke
 If uv was installed in the diagnostic bootstrap environment, use `.bootstrap/bin/uv` instead of `uv`. The image-only deployment preserves the existing service account, secret bindings and versions (including device token version `1`), environment variables, ingress, IAM policy and timeout. It still builds and publishes a new image through Cloud Build.
 
 The smoke command reads only the device-token secret, makes one paid research request for the existing Ford Model T entry, fetches the stored result again, and validates each published question. It never reads the OpenAI key locally and does not seed or overwrite cars. Success is evidence of the live research/storage path; it does not validate every historical claim or the iOS client.
+
+## Inspecting a completed research result
+
+If a smoke run reports that research was not ready, inspect the saved status before making another paid request:
+
+```sh
+uv run --frozen python -m scripts.cloud_smoke --inspect
+```
+
+This performs one authenticated snapshot GET and reads only the device-token binding. Its JSON shows the saved status, application identification message and published-fact count, marked `inspectionOnly: true`. It does not call OpenAI, change data or require a new Cloud Run deployment. Existing facts may come from earlier runs; inspection alone cannot compare the preceding POST response or attribute those facts to it.
+
+Normal research smoke checks now distinguish `needs_clarification` from `ready`. Both require the returned and subsequently saved status/timestamp to agree and all published questions to validate. `ready` additionally requires published facts (exit 0). `needs_clarification` reports the identification message and can have zero facts (exit 2), without claiming the library is learning-ready. `failed`, `researching`, inconsistent snapshots and invalid facts remain failures (exit 1), even if older facts are present. Do not invent year/body details to force readiness.

@@ -366,3 +366,65 @@ def test_cloud_smoke_exception_messages_never_expose_credentials(smoke_setup, mo
     assert smoke_setup["requests"] == []
     output = capsys.readouterr()
     assert TOKEN not in output.out + output.err
+
+
+@pytest.mark.parametrize("status", ["ready", "needs_clarification", "researching", "failed"])
+def test_inspection_reads_saved_state_without_research(smoke_setup, capsys, status):
+    smoke_setup["initial"]["research"] = copy.deepcopy(smoke_setup["persisted"]["research"])
+    smoke_setup["initial"]["research"][0]["status"] = status
+    smoke_setup["initial"]["research"][0]["message"] = "Please identify the year and body style."
+    smoke_setup["initial"]["facts"] = copy.deepcopy(smoke_setup["persisted"]["facts"])
+    assert cloud_smoke.main(["--inspect"]) == 0
+    assert [request.method for request in smoke_setup["requests"]] == ["GET"]
+    assert smoke_setup["secret_calls"] == [("bound-device-secret", "7")]
+    result = json.loads(capsys.readouterr().out)
+    assert result["inspectionOnly"] is True
+    assert result["status"] == status
+    assert result["publishedFacts"] == 1
+    assert result["message"] == "Please identify the year and body style."
+
+
+@pytest.mark.parametrize("fact_count", [0, 1])
+def test_clarification_is_distinct_from_ready_and_technical_failure(smoke_setup, capsys, fact_count):
+    for key in ("researched", "persisted"):
+        smoke_setup[key]["research"][0]["status"] = "needs_clarification"
+        smoke_setup[key]["research"][0]["message"] = "Which model year and body style?"
+        smoke_setup[key]["facts"] = smoke_setup[key]["facts"][:fact_count]
+    assert cloud_smoke.main([]) == 2
+    output = capsys.readouterr()
+    # The paid request completed and persisted, but the learning-ready result is not claimed.
+    result = json.loads(output.out.split("\n", 1)[1])
+    assert result["status"] == "needs_clarification"
+    assert result["publishedFacts"] == fact_count
+    assert result["message"] == "Which model year and body style?"
+    assert "vehicle identification needs clarification" in output.err
+    assert len(smoke_setup["requests"]) == 3
+
+
+@pytest.mark.parametrize("status", ["failed", "researching"])
+def test_old_facts_do_not_make_nonterminal_research_successful(smoke_setup, capsys, status):
+    for key in ("researched", "persisted"):
+        smoke_setup[key]["research"][0]["status"] = status
+    assert cloud_smoke.main([]) == 1
+    output = capsys.readouterr()
+    assert "failed or still running" in output.err
+    assert '"status": "' + status + '"' in output.out
+
+
+@pytest.mark.parametrize(
+    "message", [TOKEN + " leaked", "escaped " + "".join("%" + format(ord(c), "02X") for c in TOKEN)]
+)
+def test_inspection_redacts_credential_in_application_message(smoke_setup, capsys, message):
+    smoke_setup["initial"]["research"] = copy.deepcopy(smoke_setup["persisted"]["research"])
+    smoke_setup["initial"]["research"][0]["message"] = message
+    assert cloud_smoke.main(["--inspect"]) == 0
+    output = capsys.readouterr()
+    assert TOKEN not in output.out + output.err
+    assert message not in output.out
+    assert [request.method for request in smoke_setup["requests"]] == ["GET"]
+
+
+def test_inspection_needs_saved_research_and_does_not_retry(smoke_setup, capsys):
+    assert cloud_smoke.main(["--inspect"]) == 1
+    assert [request.method for request in smoke_setup["requests"]] == ["GET"]
+    assert "exactly one research state" in capsys.readouterr().err
