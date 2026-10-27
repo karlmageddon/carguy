@@ -61,3 +61,13 @@ For a physical iPhone, choose your signing team under the app target's Signing &
 - After restoring the saved URL and syncing, all three attempts, their grades and the completed session matched the API snapshot exactly. A second sync retained the same records without duplicates. The missed question became due again after the one-minute retry interval.
 
 These checks used the stored facts and made no new research request. The offline check simulated API unavailability, not full network disconnection. Selected-photo persistence and physical-device behavior were not tested. The device token was handled privately, remained out of chat, logs and source control, and the simulator clipboard and temporary transfer resources were cleared after pairing.
+
+## Post-deployment sync verification — October 27, 2026
+
+After the Actions deployment, the paired iPhone 16 Pro simulator running iOS 18.6 synced successfully with Cloud Run revision `carguy-api-00004-t46`, serving the image built from merge commit `43c8cd5`. The app displayed “Synced. Study is available offline.” using its saved pairing.
+
+Before sync, the simulator and authenticated API snapshot matched: 7 cars, 10 facts, 3 answers, 1 completed session and 1 research status, with no exhibits or reports. Per-record fingerprints covered every stored field, normalizing equivalent JSON integer/float encodings and omitted optional null values. Comparing both snapshots after sync and again after restarting the app confirmed that every existing record remained unchanged, with no duplicates or lost data.
+
+The two correct answers and one missed answer retained their grades, fact revisions and session references. Fact content and citations were unchanged. In the app, Ford Model T showed its published facts and “3 answers retained”; Study showed the completed session, a one-day streak and 8 facts due.
+
+No new answers, sessions or research requests were created during this check, and no fixes were needed. The device token remained out of chat, logs and commits; temporary verification scripts and record fingerprints were removed. This verifies authenticated sync and existing-data preservation after deployment, without extending the earlier offline, photo or physical-device test coverage.
