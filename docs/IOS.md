@@ -78,3 +78,16 @@ No new answers, sessions or research requests were created during this check, an
 Research targets 3–5 different best-match photos and labels them as representative when the precise year, variant or exhibited vehicle is uncertain. It stores the available matches even when fewer than three can be found. Sync saves the compact image copies and credits with the local library, so the gallery works without internet access. Existing personal photos are preserved as a fallback for cars without a gallery.
 
 Garage → car → Photos includes **Next photo** and source/license credits. During study, successive questions about the same car cycle through its photos; each car has its own rotation. Existing cars need another Research after the gallery-capable backend is deployed to populate photos. No existing facts, answers or sessions need to be reset.
+
+
+## Verified production photo galleries — October 27, 2026
+
+After [PR #2](https://github.com/karlmageddon/carguy/pull/2) merged as `a96ee49`, the [Actions run](https://github.com/karlmageddon/carguy/actions/runs/40558418964) passed backend checks and all 15 iOS simulator tests, then deployed healthy Cloud Run revision `carguy-api-00005-7tl` with 100% of traffic.
+
+One authorized Ford Model T research request returned five distinct representative photos. The response and a subsequent API snapshot matched exactly, confirming database persistence. All five copies decoded as valid JPEGs, measured approximately 74–88 KiB each, and included source, attribution and license metadata. Research retained `needs_clarification` for the exact exhibited vehicle, while still storing the best-match gallery and bringing the library to 20 facts. Fingerprint comparisons confirmed that all original facts, answers and completed sessions were preserved.
+
+The paired iPhone 16 Pro simulator running iOS 18.6 synced the gallery and facts successfully. All five image copies and research metadata matched the API. After restarting with the temporary unreachable API URL, Sync failed as expected, but the gallery displayed its saved images and credits; **Next photo** showed another image without API access.
+
+An offline quiz displayed photo 1 of 5. After one correct test answer, **Next question** changed to photo 2 of 5 with its corresponding credit and license. Finish saved the one-answer session locally. Another offline restart retained all five image copies, the answer and completed session. Restoring the saved production URL and syncing uploaded the test records successfully: the simulator and API matched at 7 cars, 20 facts, 4 answers and 2 completed sessions, with all original record fingerprints unchanged.
+
+The simulator was left connected to production on the Ford Model T gallery. No code fixes were needed. This validates production photo research, database storage, sync, persistence and quiz rotation with the API unreachable; full network disconnection, physical-device behavior and personal-photo fallback were not additionally tested. The device token stayed out of chat, logs and commits, and temporary verification scripts and fingerprints were removed.
