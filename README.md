@@ -6,7 +6,7 @@ The FastAPI backend was recovered from `carguy-backend.tgz`; the SwiftUI app and
 
 ## What's implemented
 
-- Garage with exhibits, identification notes, photo import and removed-car status. Removed cars leave the quiz pool; their facts, attempts, sessions and exhibit history remain.
+- Garage with exhibits, identification notes, photo import and removed-car status. Add car by plaque captures or selects a museum plaque, reads its text on-device, and lets you review the name and transcription before saving or researching. Plaque images are kept separately from quiz photos. Removed cars leave the quiz pool; their facts, attempts, sessions and exhibit history remain.
 - OpenAI web research for technical specifications, history, stories and automotive fundamentals. Facts must cite URLs returned by web search and pass question validation before storage. This validates source provenance, not the truth of every claim; disputed facts can be quarantined and rechecked.
 - Multiple-choice and typed recall, including explicit numeric-unit/tolerance grading. OpenAI proposes incorrect alternatives; the backend adds the exact canonical answer, removes duplicate/equivalent alternatives, and validates the assembled question before publication. Citations appear in fact details, outside the quiz.
 - Local persistent library, offline answers and reports, manual sync, immutable attempts, versioned facts, and server-side regrading against the original fact revision.

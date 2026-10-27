@@ -32,6 +32,7 @@ struct GarageView: View {
     @State private var exhibit: String?
     @State private var showRemoved = false
     @State private var addingCar = false
+    @State private var addingByPlaque = false
     @State private var addingExhibit = false
     @State private var exhibitName = ""
     var body: some View {
@@ -59,6 +60,7 @@ struct GarageView: View {
                 }
                 Section {
                     Button("Add car", systemImage: "plus") { addingCar = true }.disabled(store.busy)
+                    Button("Add car by plaque", systemImage: "text.viewfinder") { addingByPlaque = true }.disabled(store.busy)
                     Button("Add exhibit", systemImage: "rectangle.stack.badge.plus") { addingExhibit = true }
                     Button("Sync", systemImage: "arrow.triangle.2.circlepath") { Task { await store.sync() } }.disabled(store.busy)
                 }
@@ -66,6 +68,7 @@ struct GarageView: View {
             .navigationTitle("Carguy")
             .refreshable { await store.sync() }
             .sheet(isPresented: $addingCar) { CarEditor(car: Car(name: "", exhibitId: exhibit)) }
+            .sheet(isPresented: $addingByPlaque) { PlaqueCarView(exhibitId: exhibit) }
             .alert("New exhibit", isPresented: $addingExhibit) {
                 TextField("Exhibit name", text: $exhibitName)
                 Button("Save") {
@@ -120,6 +123,13 @@ struct CarEditor: View {
                             }
                         }
                     if car.photoData != nil { Button("Remove photo", role: .destructive) { car.photoData = nil } }
+                    if let encoded = car.plaquePhotoData, let data = Data(base64Encoded: encoded), let image = UIImage(data: data) {
+                        Text("Museum plaque").font(.headline)
+                        Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 240)
+                            .accessibilityLabel("Saved museum plaque")
+                        Button("Remove plaque photo", role: .destructive) { car.plaquePhotoData = nil }
+                        Text("Removing the plaque photo keeps the identification notes. Correct or remove the transcription in the notes above.").font(.caption)
+                    }
                 }.disabled(store.busy || store.diskFailed)
                 if !error.isEmpty { Text(error).foregroundStyle(.red) }
             }
@@ -170,6 +180,13 @@ struct CarDetail: View {
                         }
                     }
                     Button("Research with OpenAI") { Task { await store.research(carId: car.id) } }.disabled(store.busy)
+                }
+                if let encoded = car.plaquePhotoData, let data = Data(base64Encoded: encoded), let image = UIImage(data: data) {
+                    Section("Museum plaque") {
+                        Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 320)
+                            .accessibilityLabel("Museum plaque for \(car.name)")
+                        Text("Plaque text is in identification notes. Edit to correct the transcription before researching.").font(.caption)
+                    }
                 }
                 Section("Facts") {
                     ForEach(store.snapshot.facts.filter { $0.carId == car.id }) { fact in

@@ -37,7 +37,7 @@ struct SettingsView: View {
                     }
                 }
                 Section("Privacy and backup") {
-                    Text("This is a personal, single-user library. Sync sends car photos, notes and learning history to your API. Research sends identification notes and disputed facts to OpenAI. Photo selection does not send photos to OpenAI.")
+                    Text("This is a personal, single-user library. Sync sends car and plaque photos, notes and learning history to your API. Plaque text recognition happens on this device. Research sends reviewed identification notes and disputed facts to OpenAI, not your selected or captured photos.")
                     Text("Sync before reinstalling the app. Unsynced device data is lost when the app is deleted.")
                 }
                 if !status.isEmpty { Text(status) }

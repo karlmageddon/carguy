@@ -32,9 +32,10 @@ class Car(Model):
     previous_exhibit_ids: list[Identifier] = Field(default_factory=list, max_length=100)
     removed: bool = False
     photo_data: str | None = Field(default=None, max_length=350000)
+    plaque_photo_data: str | None = Field(default=None, max_length=350000)
     updated_at: Timestamp
 
-    @field_validator("photo_data")
+    @field_validator("photo_data", "plaque_photo_data")
     @classmethod
     def small_jpeg(cls, value: str | None) -> str | None:
         if value is not None:

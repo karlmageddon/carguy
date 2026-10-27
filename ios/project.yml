@@ -16,7 +16,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.karlmageddon.Carguy
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: Choose a car photo for offline study.
+        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: Choose car or museum plaque photos for offline study and research notes.
+        INFOPLIST_KEY_NSCameraUsageDescription: Photograph museum plaques to identify cars and prepare research notes.
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         TARGETED_DEVICE_FAMILY: '1,2'

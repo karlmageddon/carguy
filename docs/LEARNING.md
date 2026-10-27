@@ -1,6 +1,6 @@
 # Learning and offline behavior
 
-The device saves a JSON snapshot atomically in its Documents directory with iOS file protection. Pairing tokens live in Keychain; backend credentials are never bundled. Do not uninstall before syncing: unsynced answers, car changes and photos are local-only.
+The device saves a JSON snapshot atomically in its Documents directory with iOS file protection. Museum plaque photos are stored separately and never used as quiz imagery, so their text cannot reveal quiz answers. The reviewed on-device transcription is used as identification notes for research. Pairing tokens live in Keychain; backend credentials are never bundled. Do not uninstall before syncing: unsynced answers, car changes and photos are local-only.
 
 ## Quiz scheduling
 

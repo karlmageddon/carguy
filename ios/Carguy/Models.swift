@@ -14,6 +14,7 @@ struct Car: Codable, Identifiable, Hashable {
     var previousExhibitIds: [String] = []
     var removed = false
     var photoData: String?
+    var plaquePhotoData: String?
     var updatedAt = Date().timeIntervalSince1970
 }
 struct Source: Codable, Hashable { var title: String; var url: String }
