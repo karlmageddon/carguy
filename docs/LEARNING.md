@@ -4,11 +4,11 @@ The device saves a JSON snapshot atomically in its Documents directory with iOS 
 
 ## Quiz scheduling
 
-Only published facts belonging to active cars are eligible. Flagged facts and removed cars are excluded. Due facts are ordered by due date; never-seen facts come first. A session targets 5, 10, 15, 20, 25 or 30 minutes and can finish early. Any session explicitly finished after at least one answer counts toward a study day. Answers are persisted immediately; if the app is terminated before Finish, they remain in learning history but the unfinished session does not count toward the streak.
+Only published facts belonging to active cars are eligible. Flagged facts and removed cars are excluded. Due facts are ordered by due date; never-seen facts come first. Quizzes are untimed and use multiple choice only. Start quiz opens an exhibit checklist with all exhibits selected by default; users can select one or several exhibits, including unassigned cars where available. An empty selection or one with no due facts cannot start a quiz. Any session explicitly finished after at least one answer counts toward a study day. Answers are persisted immediately; if the app is terminated before Finish, they remain in learning history but the unfinished session does not count toward the streak.
 
-The timer uses a wall-clock deadline, so backgrounding does not pause the target. On returning, an expired deadline completes the session. A wrong answer is due after one minute, and correct answers advance an exponential day interval capped at 30 days. Question choices shuffle per presentation. A new fact revision has no inherited success interval; historical attempts remain tied to their original revision.
+There is no countdown, deadline, or automatic time-based completion. Users tap Finish when ready. A wrong answer is due after one minute, and correct answers advance an exponential day interval capped at 30 days. Question choices shuffle per presentation. A new fact revision has no inherited success interval; historical attempts remain tied to their original revision.
 
-Typed recall uses case/diacritic/punctuation normalization and explicit accepted aliases. Numeric questions require a matching supplied unit and an explicit tolerance; vague semantic answers are not silently marked correct. Multiple-choice and typed responses share grading rules. The server recomputes correctness when syncing; the UI's local grading is provisional until synced.
+The shared grader retains case/diacritic/punctuation normalization and explicit accepted aliases for existing records. Numeric questions require a matching supplied unit and an explicit tolerance; vague semantic answers are not silently marked correct. The app presents selectable answer choices; selecting a choice records nothing until Check answer is tapped. The server recomputes correctness when syncing; the UI's local grading is provisional until synced.
 
 Research seeks 3–5 distinct best-match representative photos. Each stored JPEG is at most 100 KiB; gallery bytes and credits sync with the library and persist offline. Questions for the same car cycle through that gallery independently of other cars. Your imported personal photo remains the fallback when no research gallery is available. Photo credit/license links appear with the image; fact citations remain outside quizzes.
 
@@ -22,7 +22,7 @@ Travel can create non-monotonic local dates; original recorded dates are retaine
 
 ## Sync and conflicts
 
-Sync is manual. Research/review first uploads the current local library. Upload order is exhibits, cars, attempts, sessions, then reports, in batches of 100 per collection; the current remote snapshot is fetched afterwards. Edits made while a request is awaiting a response are retained by timestamp/ID merge and sent in a subsequent sync.
+Sync is manual, available in Settings → Offline study and sync → Sync library (and Garage → Sync). Research/review first uploads the current local library. Upload order is exhibits, cars, attempts, sessions, then reports, in batches of 100 per collection; the current remote snapshot is fetched afterwards. Edits made while a request is awaiting a response are retained by timestamp/ID merge and sent in a subsequent sync.
 
 Car/exhibit conflicts use last updated timestamp; avoid editing the same car on two offline devices at the same time. Immutable attempt/session IDs make retries idempotent. The backend retains fact revisions so answers to an old revision can still sync. Reports keep suspect facts quarantined until a sourced correction or reaffirmation; unresolved provider calls do not return the fact to quizzes.
 

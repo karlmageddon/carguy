@@ -71,6 +71,10 @@ enum StudyInputLimits {
         return availableFacts.filter { cars.contains($0.carId) && Learning.due($0, attempts: snapshot.attempts) <= now }
             .sorted { Learning.due($0, attempts: snapshot.attempts) < Learning.due($1, attempts: snapshot.attempts) }
     }
+    func queue(exhibitIds: Set<String?>, now: Date = Date()) -> [Fact] {
+        let cars = Set(snapshot.cars.filter { exhibitIds.contains($0.exhibitId) }.map(\.id))
+        return queue(exhibit: nil, now: now).filter { cars.contains($0.carId) }
+    }
     func record(fact: Fact, response: String, sessionId: String) -> Bool? {
         guard !diskFailed else { return nil }
         guard !response.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,

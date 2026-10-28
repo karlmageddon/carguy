@@ -12,6 +12,12 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section("Offline study and sync") {
+                    Label("Saved for offline study", systemImage: "checkmark.icloud")
+                    Text("Downloaded facts and photos stay on this device. Answers stay on this device. Tap Sync library when online.").font(.caption).foregroundStyle(.secondary)
+                    Button("Sync library", systemImage: "arrow.triangle.2.circlepath") { Task { await store.sync() } }
+                        .disabled(store.busy || store.diskFailed)
+                }
                 Section("Pair with your backend") {
                     TextField("HTTPS Cloud Run URL", text: $endpoint).textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)
                     SecureField("Device token", text: $token)
@@ -19,7 +25,6 @@ struct SettingsView: View {
                         do { try DeviceToken.save(token); status = "Device token saved in Keychain." }
                         catch { status = error.localizedDescription }
                     }
-                    Button("Sync now") { Task { await store.sync() } }.disabled(store.busy)
                     Text("Use the device token configured on your backend. Your OpenAI key stays on the server.").font(.caption)
                 }
                 Section("Daily reminder") {

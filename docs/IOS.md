@@ -119,3 +119,13 @@ Research was then started from that car's detail screen. The first request retur
 Fingerprint comparisons confirmed that all pre-existing cars, facts, answers and completed sessions remained unchanged. The clearly labeled test entry was retained, and the simulator was left on its researched details. The device token stayed out of chat, logs and commits; temporary verification scripts, identifiers and fingerprints were removed.
 
 This confirms saved-photo import, actual on-device OCR, editable review, offline save, restart persistence, production sync and subsequent research. **Save car**, Sync and **Research with OpenAI** were exercised as separate steps; the combined **Save and research** button was not separately tested end to end. Physical iPhone camera capture, full network disconnection and OCR accuracy on real museum photographs remain unverified.
+
+## Current Study and Settings flow
+
+Study is the default landing tab. Tap **Start quiz**, select exhibit checkboxes, then **Begin quiz**. Every exhibit is selected initially each time the picker opens; **All exhibits** selects or clears the group. **Unassigned cars** includes cars without an exhibit. Multiple exhibits can be combined. Cancel returns to Study; an empty selection or a selection with no due facts disables Begin quiz.
+
+Every quiz is multiple choice and untimed. Choose an answer, tap **Check answer**, and continue with **Next question**. Tap **Finish** whenever ready. Only explicitly completed sessions containing answers count toward the streak. There is no duration control, typed-recall option, countdown, or deadline.
+
+Offline-study information and **Sync library** are in **Settings → Offline study and sync**. Sync is manual. The redundant pairing-section Sync now button was removed; Garage retains its Sync action. Study no longer shows session settings, the offline note, or a sync button.
+
+The iPhone 16 Pro simulator (iOS 18.6) verified the default checklist selection, empty-selection guard, and untimed quiz launch. The library used for this UI check contained unassigned cars; the regression test covers combinations of named exhibits, unassigned cars, and removed-car exclusion. All 20 iOS tests passed. The Settings relocation built successfully. No new answers or API sync were performed during these checks.

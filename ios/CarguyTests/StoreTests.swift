@@ -24,6 +24,26 @@ final class StoreTests: XCTestCase {
              acceptedAnswers: [], choices: ["correct", "wrong"], explanation: "Fixture",
              sources: [Source(title: "Fixture", url: "https://example.org")], numericAnswer: nil)
     }
+    @MainActor func testQuizFiltersMultipleExhibitsAndUnassignedCars() throws {
+        let (store, file) = makeStore()
+        defer { try? FileManager.default.removeItem(at: file) }
+        store.snapshot.cars = [Car(id: "a", name: "A", exhibitId: "first"),
+                               Car(id: "b", name: "B", exhibitId: "second"),
+                               Car(id: "c", name: "C"),
+                               Car(id: "d", name: "Removed", exhibitId: "first", removed: true)]
+        store.snapshot.facts = store.snapshot.cars.map { car in
+            var item = fact
+            item.id = "fact-" + car.id
+            item.carId = car.id
+            return item
+        }
+        store.snapshot.attempts = []
+        XCTAssertEqual(Set(store.queue(exhibitIds: ["first", "second"]).map(\.carId)), ["a", "b"])
+        XCTAssertEqual(Set(store.queue(exhibitIds: [nil]).map(\.carId)), ["c"])
+        XCTAssertTrue(store.queue(exhibitIds: []).isEmpty)
+        XCTAssertEqual(Set(store.queue(exhibitIds: ["first", "second", nil]).map(\.id)),
+                       Set(store.queue(exhibit: nil).map(\.id)))
+    }
     @MainActor func testOfflinePersistenceRemovalAndExhibitHistory() throws {
         let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
