@@ -6,26 +6,37 @@ struct CarPhoto: View {
     var car: Car
     var photos: [ResearchPhoto] = []
     var index = 0
+    var compact = false
     private var selected: ResearchPhoto? { photos.isEmpty ? nil : photos[index % photos.count] }
     var body: some View {
         VStack(spacing: 4) {
             if let photo = selected, let data = Data(base64Encoded: photo.imageData), let image = UIImage(data: data) {
-                Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 220)
+                Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: compact ? 145 : 220).clipShape(RoundedRectangle(cornerRadius: 18))
                     .accessibilityLabel("Photo of \(car.name)")
                 Text("Representative photo \(index % photos.count + 1) of \(photos.count)").font(.caption)
-                Text(photo.attribution).font(.caption2).lineLimit(2)
-                HStack {
-                    if let source = URL(string: photo.sourceUrl) { Link("Photo source", destination: source) }
-                    if let license = URL(string: photo.licenseUrl) { Link(photo.license, destination: license) }
-                }.font(.caption2)
+                if compact {
+                    DisclosureGroup("Photo credits") {
+                        photoCredits(photo)
+                    }.font(.caption2)
+                } else { photoCredits(photo) }
             } else if let encoded = car.photoData, let data = Data(base64Encoded: encoded), let image = UIImage(data: data) {
-                Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 220)
+                Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: compact ? 145 : 220).clipShape(RoundedRectangle(cornerRadius: 18))
                     .accessibilityLabel("Photo of \(car.name)")
             } else {
                 ContentUnavailableView("Add a car photo", systemImage: "camera", description: Text("Research finds representative photos, or choose your own in Edit. Photos are saved for offline quizzes."))
             }
         }.frame(maxWidth: .infinity)
     }
+    private func photoCredits(_ photo: ResearchPhoto) -> some View {
+        VStack(spacing: 4) {
+            Text(photo.attribution).font(.caption2)
+            HStack {
+                if let source = URL(string: photo.sourceUrl) { Link("Photo source", destination: source) }
+                if let license = URL(string: photo.licenseUrl) { Link(photo.license, destination: license) }
+            }.font(.caption2)
+        }
+    }
+
 }
 struct GarageView: View {
     @EnvironmentObject var store: StudyStore
@@ -35,37 +46,60 @@ struct GarageView: View {
     @State private var addingByPlaque = false
     @State private var addingExhibit = false
     @State private var exhibitName = ""
+    private var visibleCars: [Car] {
+        store.snapshot.cars.filter { (showRemoved || !$0.removed) && (exhibit == nil || $0.exhibitId == exhibit) }
+    }
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    Picker("Exhibit", selection: $exhibit) {
-                        Text("All exhibits").tag(nil as String?)
-                        ForEach(store.snapshot.exhibits.filter { !$0.archived }) { Text($0.name).tag(Optional($0.id)) }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    HStack {
+                        Text("CARGUY").font(.title2.weight(.black)).italic()
+                        Spacer()
+                        Label("\(Learning.streak(store.snapshot.sessions).days) days", systemImage: "flame.fill")
+                            .font(.subheadline.bold()).padding(10).background(Rally.paleYellow, in: Capsule())
                     }
-                    Toggle("Include removed cars", isOn: $showRemoved)
-                }
-                ForEach(store.snapshot.cars.filter { (showRemoved || !$0.removed) && (exhibit == nil || $0.exhibitId == exhibit) }) { car in
-                    NavigationLink {
-                        CarDetail(carId: car.id)
-                    } label: {
-                        VStack(alignment: .leading) {
-                            Text(car.name)
-                            if car.removed { Text("Removed · history retained").font(.caption).foregroundStyle(.secondary) }
-                            if let state = store.snapshot.research.first(where: { $0.carId == car.id }) {
-                                Text(state.status.replacingOccurrences(of: "_", with: " ")).font(.caption).foregroundStyle(.secondary)
-                            }
+                    Text("Your garage").font(.largeTitle.weight(.heavy))
+                    HStack {
+                        Text("Your cars").font(.title2.bold())
+                        Spacer()
+                        Text("\(visibleCars.count) cars").foregroundStyle(.secondary)
+                    }
+                    DisclosureGroup("Exhibit filters") {
+                        Picker("Exhibit", selection: $exhibit) {
+                            Text("All exhibits").tag(nil as String?)
+                            ForEach(store.snapshot.exhibits.filter { !$0.archived }) { Text($0.name).tag(Optional($0.id)) }
                         }
+                        Toggle("Include removed cars", isOn: $showRemoved)
+                    }.font(.subheadline)
+                    ForEach(visibleCars) { car in
+                        NavigationLink { CarDetail(carId: car.id).toolbar(.visible, for: .navigationBar) } label: {
+                            HStack(spacing: 12) {
+                                CarThumbnail(car: car, photos: store.photos(for: car.id))
+                                VStack(alignment: .leading, spacing: 5) {
+                                    Text(car.name).font(.headline).foregroundStyle(.primary)
+                                    Text(car.removed ? "Removed · history retained" : "\(store.snapshot.facts.filter { $0.carId == car.id && $0.status == "published" }.count) facts · \(store.snapshot.research.first { $0.carId == car.id }?.status.replacingOccurrences(of: "_", with: " ") ?? "Ready to research")")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }.frame(maxWidth: .infinity, alignment: .leading)
+                                Image(systemName: "chevron.right").foregroundStyle(.secondary)
+                            }.padding(8).background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20))
+                        }.buttonStyle(.plain)
                     }
-                }
-                Section {
-                    Button("Add car", systemImage: "plus") { addingCar = true }.disabled(store.busy)
-                    Button("Add car by plaque", systemImage: "text.viewfinder") { addingByPlaque = true }.disabled(store.busy)
-                    Button("Add exhibit", systemImage: "rectangle.stack.badge.plus") { addingExhibit = true }
-                    Button("Sync", systemImage: "arrow.triangle.2.circlepath") { Task { await store.sync() } }.disabled(store.busy)
-                }
+                    Button { addingByPlaque = true } label: {
+                        Label("Add car by plaque", systemImage: "camera").font(.headline).frame(maxWidth: .infinity).padding(18)
+                    }.buttonStyle(.plain).background(.background, in: RoundedRectangle(cornerRadius: 18)).disabled(store.busy)
+                    HStack {
+                        Button("Add car", systemImage: "plus") { addingCar = true }.disabled(store.busy)
+                        Spacer()
+                        Button("Add exhibit", systemImage: "rectangle.stack.badge.plus") { addingExhibit = true }
+                        Spacer()
+                        Button("Sync", systemImage: "arrow.triangle.2.circlepath") { Task { await store.sync() } }.disabled(store.busy)
+                    }.font(.caption.bold())
+                }.padding(20)
             }
-            .navigationTitle("Carguy")
+            .background(Rally.cream)
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
             .refreshable { await store.sync() }
             .sheet(isPresented: $addingCar) { CarEditor(car: Car(name: "", exhibitId: exhibit)) }
             .sheet(isPresented: $addingByPlaque) { PlaqueCarView(exhibitId: exhibit) }
