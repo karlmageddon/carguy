@@ -1,3 +1,4 @@
+import base64
 import gzip
 import json
 import time
@@ -7,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from carguy.main import create_app
-from carguy.models import Car, FactDraft, ResearchResult, ReviewResult
+from carguy.models import Car, FactDraft, ResearchPhoto, ResearchResult, ReviewResult
 from carguy.research import ResearchUnavailable
 from carguy.storage import SQLiteStore
 
@@ -246,3 +247,127 @@ def test_plaque_photo_sync_roundtrip_and_validation(client):
     assert sync(client, cars=[car | {"plaquePhotoData": "not a jpeg"}]).status_code == 422
     too_large = base64.b64encode(b"\xff\xd8\xff" + b"x" * (250 * 1024)).decode()
     assert sync(client, cars=[car | {"plaquePhotoData": too_large}]).status_code == 422
+
+
+@pytest.mark.parametrize(
+    ("status", "include_facts"),
+    [("ready", True), ("needs_clarification", True), ("needs_clarification", False)],
+)
+def test_finished_research_releases_plaque_but_preserves_library(client, status, include_facts):
+    car, fact = seed(client)
+    plaque = base64.b64encode(b"\xff\xd8\xffplaque-retention-fixture").decode()
+    personal = base64.b64encode(b"\xff\xd8\xffpersonal-retention-fixture").decode()
+    gallery = ResearchPhoto(
+        url="https://upload.wikimedia.org/fixture.jpg",
+        source_url="https://commons.wikimedia.org/wiki/File:Fixture.jpg",
+        caption="Representative fixture",
+        attribution="Test fixture",
+        license="CC0",
+        license_url="https://creativecommons.org/publicdomain/zero/1.0/",
+        image_data=personal,
+    ).model_dump(by_alias=True)
+    client.app.state.store.transaction(lambda state: state["research"][car["id"]].update(photos=[gallery]))
+    now = time.time()
+    saved_car = car | {
+        "notes": "Museum plaque transcription:\nKeep this reviewed identification text.",
+        "plaquePhotoData": plaque,
+        "photoData": personal,
+        # Future-but-valid offline timestamps must not defeat image removal.
+        "updatedAt": now + 3600,
+    }
+    recorded = attempt(fact, session="retention-session", answeredAt=now)
+    session = {
+        "id": "retention-session",
+        "attemptIds": [recorded["id"]],
+        "completedAt": now,
+        "studyDay": datetime.fromtimestamp(now, UTC).date().isoformat(),
+        "timeZone": "UTC",
+    }
+    before = sync(client, cars=[saved_car], attempts=[recorded], sessions=[session]).json()
+    researcher = Researcher()
+
+    async def completed(_car):
+        return ResearchResult(
+            status=status,
+            message="Validated fixture research result",
+            facts=[draft()] if include_facts else [],
+            photo=None,
+        )
+
+    researcher.research = completed
+    researching = TestClient(
+        create_app(store=client.app.state.store, researcher=researcher, token="test-device")
+    )
+    response = researching.post("/v1/cars/car/research", headers=AUTH)
+    assert response.status_code == 200
+    after = researching.get("/v1/snapshot", headers=AUTH).json()
+    assert response.json() == after
+    current = after["cars"][0]
+    assert current["plaquePhotoData"] is None
+    assert current["updatedAt"] > saved_car["updatedAt"]
+    assert current["notes"] == saved_car["notes"]
+    assert current["photoData"] == personal
+    assert after["research"][0]["photos"] == [gallery]
+    assert after["research"][0]["status"] == status
+    for collection in ("facts", "attempts", "sessions"):
+        assert after[collection] == before[collection]
+    # An unchanged offline copy must not resurrect the released plaque.
+    assert sync(researching, cars=[saved_car]).json()["cars"][0] == current
+
+
+def test_failed_research_keeps_plaque_for_retry(client):
+    car, _ = seed(client)
+    plaque = base64.b64encode(b"\xff\xd8\xfffailed-research-plaque-fixture").decode()
+    car.update(plaquePhotoData=plaque, notes="Reviewed plaque text", updatedAt=time.time())
+    before = sync(client, cars=[car]).json()
+    researcher = Researcher()
+
+    async def fail(_car):
+        raise ResearchUnavailable("Fixture provider unavailable")
+
+    researcher.research = fail
+    failing = TestClient(create_app(store=client.app.state.store, researcher=researcher, token="test-device"))
+    assert failing.post("/v1/cars/car/research", headers=AUTH).status_code == 503
+    after = failing.get("/v1/snapshot", headers=AUTH).json()
+    assert after["cars"] == before["cars"]
+    assert after["facts"] == before["facts"]
+    assert after["research"][0]["status"] == "failed"
+
+
+def test_identification_only_result_releases_plaque_on_new_car(client):
+    plaque = base64.b64encode(b"\xff\xd8\xffidentification-plaque-fixture").decode()
+    car = Car(
+        id="unknown-car",
+        name="Unidentified museum car",
+        notes="Reviewed museum transcription remains for clarification.",
+        plaque_photo_data=plaque,
+        updated_at=0,
+    ).model_dump(by_alias=True)
+    assert sync(client, cars=[car]).status_code == 200
+    researcher = Researcher()
+
+    async def clarify(_car):
+        return ResearchResult(
+            status="needs_clarification", message="Which model is named on the plaque?", facts=[], photo=None
+        )
+
+    researcher.research = clarify
+    researching = TestClient(
+        create_app(store=client.app.state.store, researcher=researcher, token="test-device")
+    )
+    response = researching.post("/v1/cars/unknown-car/research", headers=AUTH)
+    assert response.status_code == 200
+    saved = researching.get("/v1/snapshot", headers=AUTH).json()
+    assert saved["facts"] == []
+    assert saved["cars"][0]["plaquePhotoData"] is None
+    assert saved["cars"][0]["notes"] == car["notes"]
+    assert saved["cars"][0]["updatedAt"] > car["updatedAt"]
+
+
+def test_research_without_plaque_does_not_touch_car_timestamp(client):
+    car, _ = seed(client)
+    response = client.post("/v1/cars/car/research", headers=AUTH)
+    assert response.status_code == 200
+    saved = client.get("/v1/snapshot", headers=AUTH).json()["cars"][0]
+    assert saved["updatedAt"] == car["updatedAt"]
+    assert saved["plaquePhotoData"] is None

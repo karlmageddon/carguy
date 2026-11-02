@@ -24,7 +24,7 @@ The provider's private output contract uses `distractors`, separate from the sto
 
 ## Museum-friendly stories
 
-Deployment status (2026-11-02): this guidance is implemented and tested locally, and has not yet been deployed to the existing Cloud Run service. The behavior below applies after deployment.
+Deployment status (2026-11-02): the museum-story guidance is deployed through the verified Actions run for commit `44a7fba`.
 
 Research actively seeks two or three distinct, entertaining `story` facts alongside the technical, history and fundamentals facts. Stories should give non-enthusiasts a specific idea they can retell: an owner's experience, everyday life, a design surprise, or a cultural connection. Statements use one or two plain-language sentences, with an explanation of why the story matters and a multiple-choice question about its central idea. Primary museum, archive and manufacturer evidence is preferred; unsupported anecdotes, motives and invented quotations are excluded.
 
@@ -45,3 +45,7 @@ Cars additionally accept optional `plaquePhotoData`: a base64 JPEG up to 250 KiB
 ## Snapshot transport
 
 Clients advertising `Accept-Encoding: gzip` receive gzip-compressed responses of at least 1,000 bytes. The JSON schema is unchanged; HTTP clients should decode Content-Encoding normally (URLSession and HTTPX do this automatically). Clients requesting identity or omitting gzip continue to receive uncompressed JSON. This reduces full-library transfer size as plaque images and research galleries accumulate. A raw-wire regression test checks gzip bytes, headers, complete-library preservation and uncompressed-client compatibility.
+
+## Plaque image retention
+
+A successfully committed, validated research result clears the car’s `plaquePhotoData` and advances `updatedAt` beyond its prior value so stale offline copies cannot restore it. This includes `needs_clarification` results with no facts: the reviewed text remains available for follow-up. Provider/validation failures and identity conflicts retain the image for retry. Research never uses the photo itself, and cleanup preserves identification notes, personal car photos, representative galleries, facts and study history. Clients receive the cleared field through normal snapshot/sync.

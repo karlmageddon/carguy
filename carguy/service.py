@@ -115,7 +115,8 @@ def finish_research(state, car: Car, started: float, result: ResearchResult):
     current = state["research"].get(car.id)
     if not current or current["updatedAt"] != started:
         raise Conflict("A newer research request has replaced this one")
-    if research_identity(Car.model_validate(state["cars"][car.id])) != research_identity(car):
+    stored_car = state["cars"][car.id]
+    if research_identity(Car.model_validate(stored_car)) != research_identity(car):
         raise Conflict("Car identification changed during research; research the updated entry")
     now = time.time()
     # Keep published facts stable on a normal retry. Re-checking a fact goes through its report/revision flow.
@@ -153,6 +154,15 @@ def finish_research(state, car: Car, started: float, result: ResearchResult):
         "photoMessage": result.photo_message,
         "updatedAt": now,
     }
+    # A committed, validated result completes this research attempt, including a
+    # needs_clarification result without facts. Keep the reviewed transcription
+    # for any follow-up, but release its source image. Failed provider calls do
+    # not enter this transaction and retain the image for retry.
+    if stored_car.get("plaquePhotoData") is not None:
+        stored_car["plaquePhotoData"] = None
+        # Advance beyond the stored timestamp, not just wall time, so an older
+        # offline copy cannot restore the image during last-write-wins sync.
+        stored_car["updatedAt"] = max(now, stored_car["updatedAt"] + 0.001)
     return snapshot(state)
 
 
