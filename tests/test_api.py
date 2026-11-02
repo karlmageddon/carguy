@@ -1,3 +1,5 @@
+import gzip
+import json
 import time
 from datetime import UTC, datetime
 
@@ -79,6 +81,42 @@ def test_auth_and_health(client):
     assert client.get("/health").json()["authenticationRequired"] is True
     assert client.get("/v1/snapshot").status_code == 401
     assert client.post("/v1/cars/missing/research", headers=AUTH).status_code == 404
+
+
+def test_large_snapshot_gzip_preserves_complete_library_and_identity_clients(client):
+    cars = [
+        Car(
+            id=f"compression-{index}",
+            name=f"Museum fixture {index}",
+            notes="A sourced museum story about daily life and motoring. " * 45,
+            updated_at=0,
+        ).model_dump(by_alias=True)
+        for index in range(12)
+    ]
+    stored = sync(client, cars=cars).json()
+    assert len(stored["cars"]) == len(cars)
+
+    # Read raw bytes: HTTPX normally transparently decompresses response.content.
+    with client.stream("GET", "/v1/snapshot", headers=AUTH | {"Accept-Encoding": "gzip"}) as response:
+        assert response.status_code == 200
+        assert response.headers["content-encoding"] == "gzip"
+        assert "accept-encoding" in response.headers["vary"].lower()
+        compressed = b"".join(response.iter_raw())
+        assert int(response.headers["content-length"]) == len(compressed)
+    decoded = gzip.decompress(compressed)
+    assert json.loads(decoded) == stored
+
+    identity = client.get("/v1/snapshot", headers=AUTH | {"Accept-Encoding": "identity"})
+    assert identity.status_code == 200
+    assert "content-encoding" not in identity.headers
+    assert identity.json() == stored
+    assert len(compressed) < len(identity.content) / 4
+
+    client.headers.pop("accept-encoding", None)
+    unspecified = client.get("/v1/snapshot", headers=AUTH)
+    assert unspecified.status_code == 200
+    assert "content-encoding" not in unspecified.headers
+    assert unspecified.json() == stored
 
 
 def test_history_revisions_reports_and_removed_car(client):

@@ -41,3 +41,7 @@ Research uses its best judgment to choose a model/family photo search even when 
 
 
 Cars additionally accept optional `plaquePhotoData`: a base64 JPEG up to 250 KiB decoded, validated like `photoData` and persisted through normal sync. It is separate from the personal quiz photo and the research gallery. Older cars omit it or use null. The iOS plaque flow performs OCR locally and saves the reviewed transcription in `notes`; there is no new image-upload or image-analysis endpoint. Research continues to send only the car name and text notes to its provider, never either photo field. A personal photo plus a plaque image remain bounded below Firestore's per-document size limit.
+
+## Snapshot transport
+
+Clients advertising `Accept-Encoding: gzip` receive gzip-compressed responses of at least 1,000 bytes. The JSON schema is unchanged; HTTP clients should decode Content-Encoding normally (URLSession and HTTPX do this automatically). Clients requesting identity or omitting gzip continue to receive uncompressed JSON. This reduces full-library transfer size as plaque images and research galleries accumulate. A raw-wire regression test checks gzip bytes, headers, complete-library preservation and uncompressed-client compatibility.

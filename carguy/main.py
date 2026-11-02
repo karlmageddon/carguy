@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
+from starlette.middleware.gzip import GZipMiddleware
 
 from .models import Snapshot, SyncRequest
 from .research import OpenAIResearch, ResearchUnavailable
@@ -52,6 +53,9 @@ def create_app(store=None, researcher=None, token: str | None = None) -> FastAPI
         yield
 
     app = FastAPI(title="Carguy API", version="0.1.0", lifespan=lifespan)
+    # Full-library snapshots include inline images; compress their wire payload
+    # for clients that support gzip without changing the snapshot contract.
+    app.add_middleware(GZipMiddleware, minimum_size=1000, compresslevel=5)
     app.state.store = store
 
     @app.exception_handler(Conflict)
