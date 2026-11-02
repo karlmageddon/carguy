@@ -22,8 +22,15 @@ struct RallyButton: ButtonStyle {
     }
 }
 
+enum GuidePose: String {
+    case welcome = "RallyGuide"
+    case teaching = "RallyGuideTeaching"
+    case celebrating = "RallyGuideCelebrating"
+}
+
 struct RallyGuide: View {
     var size: CGFloat = 110
+    var pose: GuidePose = .welcome
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @State private var startedAt = Date()
@@ -36,7 +43,8 @@ struct RallyGuide: View {
             let blinkPhase = elapsed.truncatingRemainder(dividingBy: 7.3)
             let blinking = !reduceMotion && blinkPhase >= 3.2 && blinkPhase < 3.36
             ZStack {
-                Image("RallyGuide").resizable().scaledToFit()
+                Image(pose.rawValue).resizable().scaledToFit()
+                if pose == .welcome {
                 // Outer curls move separately; the face, hairline and outfit stay registered.
                 ForEach(0..<2) { side in
                     Image("RallyGuide").resizable().scaledToFit()
@@ -56,7 +64,19 @@ struct RallyGuide: View {
                                           y: imageHeight * 0.323)
                         }
                     }.opacity(blinking ? 1 : 0)
+                } else {
+                    // The presenting hand and cheering forearms have their own gentle movement.
+                    Image(pose.rawValue).resizable().scaledToFit()
+                        .mask {
+                            GeometryReader { geometry in
+                                Rectangle().frame(width: geometry.size.width * 0.29, height: geometry.size.height * 0.50)
+                                    .position(x: geometry.size.width * 0.84, y: geometry.size.height * 0.55)
+                            }
+                        }
+                        .rotationEffect(.degrees(reduceMotion ? 0 : sin(elapsed * 2 * .pi / 3.4) * 1.2), anchor: UnitPoint(x: 0.7, y: 0.7))
+                }
             }
+            .offset(y: pose == .celebrating && !reduceMotion ? -breathing * 2 : 0)
             .scaleEffect(x: 1 + breathing * 0.004, y: 1 + breathing * 0.012, anchor: .bottom)
         }
         .frame(width: size, height: size)
@@ -93,9 +113,10 @@ private struct GuideCurls: Shape {
 
 struct GuideMessage: View {
     let text: String
+    var pose: GuidePose = .welcome
     var body: some View {
         HStack(spacing: 8) {
-            RallyGuide(size: 82)
+            RallyGuide(size: 82, pose: pose)
             Text(text).font(.headline).frame(maxWidth: .infinity, alignment: .leading)
         }.padding(8).background(Rally.paleYellow, in: RoundedRectangle(cornerRadius: 20))
     }

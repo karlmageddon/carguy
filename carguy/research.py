@@ -47,6 +47,23 @@ MODEL_RESEARCH_SCOPE = (
     "Limit message to two short sentences: the scope or unresolved issue, then one question if needed. "
 )
 
+MUSEUM_STORY_INSTRUCTIONS = (
+    "Research is also a conversation starter for museum visitors who are not car enthusiasts. "
+    "Actively search for two or three distinct, entertaining facts in category story: human stories, "
+    "everyday life, design surprises, popular culture, or an unexpected connection visitors could retell. "
+    "A story fact must teach a specific sourced idea, not merely claim that the car is iconic or famous. "
+    "Prefer primary museum, archive or manufacturer evidence for anecdotes, famous owners and quotations. "
+    "Keep each statement to one or two plain-language sentences; use explanation to briefly say why the "
+    "story is interesting to an ordinary visitor. Avoid unexplained jargon, sensational claims, and "
+    "questions that only test an obscure number or date. Make the question check the story's central idea. "
+    "Clearly distinguish make/family context from the exact named model and the exhibited vehicle. "
+    "A famous person's ownership of another model must never become ownership of this car; neither "
+    "ownership nor use proves that person's preference or feelings. Do not invent dialogue or motives. "
+    "If fewer stories can be verified, return only those supported; never invent a story or repeat one "
+    "anecdote as several facts to meet a quota. Story facts obey the same source and question checks "
+    "as technical facts. "
+)
+
 
 class ResearchUnavailable(Exception):
     pass
@@ -154,8 +171,9 @@ class OpenAIResearch:
             "then manufacturers and reputable automotive histories. "
             + MODEL_RESEARCH_SCOPE
             + IDENTIFICATION_INPUT
+            + MUSEUM_STORY_INSTRUCTIONS
             + "Create up to 12 atomic, accurate facts covering technical specifications, history, stories, and beginner "
-            "concepts. Keep disputed claims out. Each fact needs a short typed-recall question, an unambiguous short "
+            "concepts. Keep disputed claims out. Each fact needs a short multiple-choice question, an unambiguous short "
             "answer, accepted equivalent spellings, plausible incorrect distractors, "
             "and a brief explanation. State units and precision in numeric questions; give explicit numeric grading "
             "rules or null. Do not quiz the car's identity when its photo/name already gives away the answer. "

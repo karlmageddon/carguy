@@ -17,6 +17,84 @@ def proposed_fact(fact):
     return payload | {"distractors": [choice for choice in choices if choice != fact.answer]}
 
 
+def clara_ford_story():
+    """Public museum example: context for Detroit Electric, not this app's Model 61 specimen."""
+    return draft(
+        category="story",
+        statement=(
+            "Clara Ford drove a 1914 Detroit Electric Model 47 Brougham into the 1930s. "
+            "This is Detroit Electric family history, not ownership of the unidentified museum car."
+        ),
+        prompt="What unexpected kind of car did Henry Ford's wife Clara drive?",
+        answer="A Detroit Electric",
+        acceptedAnswers=[],
+        choices=["A Detroit Electric", "A steam bus", "A racing motorcycle", "A horse-drawn tram"],
+        explanation=(
+            "Her car offers a human connection to early electric motoring. The museum identifies her "
+            "vehicle as a Model 47, which does not establish the provenance of a Model 61."
+        ),
+        sources=[
+            {
+                "title": "The Henry Ford: Clara Ford's 1914 Detroit Electric Model 47 Brougham",
+                "url": "https://www.thehenryford.org/collections/explore/artifact/209957",
+            }
+        ],
+    )
+
+
+@pytest.mark.parametrize("verified", [True, False])
+def test_museum_stories_keep_evidence_checks_and_allow_fewer_than_target(monkeypatch, verified):
+    story = clara_ford_story()
+    proposal = {"status": "ready", "message": "Family history only.", "facts": [proposed_fact(story)], "photo": None}
+    requests = []
+
+    def handler(request):
+        sent = json.loads(request.content)
+        requests.append(sent)
+        return httpx.Response(
+            200,
+            json={
+                "status": "completed",
+                "output": [
+                    {
+                        "type": "web_search_call",
+                        "action": {"sources": [{"url": story.sources[0].url}] if verified else []},
+                    },
+                    {
+                        "type": "message",
+                        "content": [{"type": "output_text", "text": json.dumps(proposal), "annotations": []}],
+                    },
+                ],
+            },
+        )
+
+    original = httpx.AsyncClient
+    monkeypatch.setattr(
+        httpx, "AsyncClient", lambda **kwargs: original(transport=httpx.MockTransport(handler), **kwargs)
+    )
+    researcher = OpenAIResearch()
+    researcher.key = "test-fixture-not-a-key"
+    call = researcher.research(Car(id="detroit", name="Detroit Electric Model 61 Brougham", updated_at=0))
+    if verified:
+        result = asyncio.run(call)
+        # Two or three stories is a research target, not permission to fabricate a minimum.
+        assert result.facts == [story]
+        assert result.facts[0].category == "story"
+        assert sum(grade(choice, story) for choice in result.facts[0].choices) == 1
+    else:
+        with pytest.raises(ResearchUnavailable) as rejected:
+            asyncio.run(call)
+        assert str(rejected.value.__cause__) == "A claimed source was not returned by web search"
+    instructions = requests[0]["instructions"]
+    assert "two or three distinct, entertaining facts in category story" in instructions
+    assert "not car enthusiasts" in instructions
+    assert "never invent a story" in instructions
+    assert "ownership of another model must never become ownership of this car" in instructions
+    assert "ownership nor use proves that person's preference or feelings" in instructions
+    assert "short multiple-choice question" in instructions
+    assert json.loads(requests[0]["input"])["car"] == "Detroit Electric Model 61 Brougham"
+
+
 def test_numeric_grading():
     fact = draft(
         answer="4 litres",

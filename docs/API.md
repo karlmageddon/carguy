@@ -22,6 +22,18 @@ Firestore namespace: database `carguy`, `carguy_users/personal/<collection>/<id>
 
 The provider's private output contract uses `distractors`, separate from the stored/API `choices` field. The backend adds the exact canonical answer and selects three distinct incorrect alternatives from the proposed pool, excluding accepted aliases and numeric equivalents. If fewer than three usable alternatives remain, research fails without publishing facts. The complete assembled question then passes the original `FactDraft` validators and source-evidence checks. The public schema and saved facts are unchanged; no migration or history reset is needed.
 
+## Museum-friendly stories
+
+Deployment status (2026-11-02): this guidance is implemented and tested locally, and has not yet been deployed to the existing Cloud Run service. The behavior below applies after deployment.
+
+Research actively seeks two or three distinct, entertaining `story` facts alongside the technical, history and fundamentals facts. Stories should give non-enthusiasts a specific idea they can retell: an owner's experience, everyday life, a design surprise, or a cultural connection. Statements use one or two plain-language sentences, with an explanation of why the story matters and a multiple-choice question about its central idea. Primary museum, archive and manufacturer evidence is preferred; unsupported anecdotes, motives and invented quotations are excluded.
+
+The story count is a research target, not a minimum publication quota. A smaller set of supported stories is accepted. Story facts retain the existing `category`, `statement`, `explanation`, `sources` and question fields, pass the same returned-web-source and unique-answer validators, and persist/sync like other facts. This is a provider instruction, not a new independent factual verifier; reporting and sourced review remain available. Existing researched cars need another research request to receive the new story emphasis; the schema does not require a migration or a history reset.
+
+Scope must remain explicit. For example, [The Henry Ford identifies Clara Ford's car as a 1914 Detroit Electric Model 47 Brougham](https://www.thehenryford.org/collections/explore/artifact/209957), which she drove into the 1930s. That supports a Detroit Electric family-history story, not ownership of the app's unverified Model 61 or its particular museum specimen. Driving or owning the car alone does not establish how strongly she liked it.
+
+
+## Research photo galleries
 
 Research snapshots now include `research[].photos` (0–5 items) and `photoMessage`. Each photo stores `url`, `sourceUrl`, `caption`, `attribution`, `license`, `licenseUrl` and `imageData` (base64 JPEG, at most 100 KiB decoded). Five bounded copies plus metadata fit in a Firestore document. Legacy single-photo URL fields remain readable; old snapshots without a gallery still decode in iOS.
 

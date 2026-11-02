@@ -13,3 +13,5 @@ Production transparent artwork is kept in the app asset catalog:
 - [Closed-eye blink frame](../../../ios/Carguy/Assets.xcassets/RallyGuideBlink.imageset/blink.png)
 
 See [design implementation and verification](../../DESIGN.md) for the final layout, animation timings, and asset prompts. Michèle sits beside the Study welcome heading without overlapping the session card. The face and outfit stay registered while outer curls sway independently.
+
+Additional animated teaching and celebration poses are indexed in [POSES.md](POSES.md).

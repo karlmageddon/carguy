@@ -26,7 +26,7 @@ In the running app's Settings:
 
 1. Set the HTTPS API URL to `https://carguy-api-241317397030.us-west1.run.app`.
 2. Open the owner-controlled Google Cloud Secret Manager console for `carguy-device-token` in project `orakle-1792087003`. View/copy **version 1**, which the service currently uses, into the app's Device token field. Save it to Keychain. Keep this value out of chat, source files and screenshots.
-3. Tap **Sync now**. In Garage, open the Ford Model T entry and its facts. Citations appear in fact details. Study draws from published facts even if a research identification question remains unresolved.
+3. Tap **Sync library** under **Offline study and sync**. In Garage, open the Ford Model T entry and its facts. Citations appear in fact details. Study draws from published facts even if a research identification question remains unresolved.
 
 The OpenAI key remains on the backend. The app does not need it. Research receives the car's name and text notes; use Garage → Edit to transcribe placard details. Selected car photos are saved for offline study and are not inspected by research.
 
@@ -120,7 +120,7 @@ Fingerprint comparisons confirmed that all pre-existing cars, facts, answers and
 
 This confirms saved-photo import, actual on-device OCR, editable review, offline save, restart persistence, production sync and subsequent research. **Save car**, Sync and **Research with OpenAI** were exercised as separate steps; the combined **Save and research** button was not separately tested end to end. Physical iPhone camera capture, full network disconnection and OCR accuracy on real museum photographs remain unverified.
 
-## Current Study and Settings flow
+## Untimed quiz and Settings verification — 2026-10-27
 
 Study is the default landing tab. Tap **Start quiz**, select exhibit checkboxes, then **Begin quiz**. Every exhibit is selected initially each time the picker opens; **All exhibits** selects or clears the group. **Unassigned cars** includes cars without an exhibit. Multiple exhibits can be combined. Cancel returns to Study; an empty selection or a selection with no due facts disables Begin quiz.
 
@@ -129,3 +129,15 @@ Every quiz is multiple choice and untimed. Choose an answer, tap **Check answer*
 Offline-study information and **Sync library** are in **Settings → Offline study and sync**. Sync is manual. The redundant pairing-section Sync now button was removed; Garage retains its Sync action. Study no longer shows session settings, the offline note, or a sync button.
 
 The iPhone 16 Pro simulator (iOS 18.6) verified the default checklist selection, empty-selection guard, and untimed quiz launch. The library used for this UI check contained unassigned cars; the regression test covers combinations of named exhibits, unassigned cars, and removed-car exclusion. All 20 iOS tests passed. The Settings relocation built successfully. No new answers or API sync were performed during these checks.
+
+## Guided car journeys — 2026-11-02
+
+Study now offers **Continue learning** and individual car journeys. Continue learning retains the exhibit checklist, with all selected initially; **Begin lesson** opens a finite introduction/review sequence. A car card opens a lesson for only that car. New ideas show the saved sourced statement, explanation and photo before an untimed multiple-choice check. Answer feedback now includes the explanation and research links. Lessons finish after their planned ideas, with an early Finish still available.
+
+Chapters cover **Meet the car**, **The human story**, then **Under the skin**, based on available researched facts. A lesson combines up to two due reviews with up to three new ideas from one chapter; review-only lessons contain at most five questions. Car familiarity is based on existing revision-specific attempts and later retrieval on separate days, not simply reading a card.
+
+The local simulator preview uses a new **Carguy Learning QA** device with a copy of the Ford Model T research only. It has no API pairing or copied learning history. A complete three-question walkthrough saved two correct answers, one missed answer and one completed session locally, and showed teaching, retry and celebration states. The paired library was not used for practice answers. The walkthrough also exposed overlapping legacy production-date facts, which led to a conservative lesson-projection deduplication fix and regression tests. No API sync or deployed research call was performed for this feature.
+
+The local backend research update asks for two or three sourced, entertaining story facts for casual museum visitors. That behavior requires deployment and a new research request for existing cars; no history reset is required.
+
+Final validation: 31 iOS tests passed, including journey pacing, chapter order, duplicate ideas, revision handling, exhibit filtering and familiarity. After the complete initial walkthrough, the final build resumed from local progress, opened the individual car journey, presented a previously untaught idea, and scrolled explanatory celebration feedback into view. Finishing that one-answer check left four answers and two completed sessions in the isolated simulator only. Backend tests: 73 passed. These are local verification results, not a deployed research or API sync verification.

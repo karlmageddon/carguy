@@ -5,6 +5,10 @@ struct StudyHome: View {
     @State private var choosingExhibits = false
     @State private var selectedExhibits: Set<String?> = []
     @State private var studying = false
+    @State private var chosenCar: Car?
+    private var nextPlan: JourneyPlan? {
+        JourneyPlanner.plan(snapshot: store.snapshot, exhibitIds: Set(store.snapshot.cars.map(\.exhibitId)))
+    }
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -23,15 +27,20 @@ struct StudyHome: View {
                         RallyGuide(size: 145)
                     }
                     VStack(alignment: .leading, spacing: 12) {
-                        Label("Your next stage", systemImage: "flag.checkered").font(.title2.bold())
-                        Text("\(store.queue(exhibit: nil).count) facts ready to review").font(.headline)
-                        Text("From your garage").font(.subheadline).foregroundStyle(.secondary)
-                        Button("Start quiz") { choosingExhibits = true }.buttonStyle(RallyButton())
-                            .disabled(store.queue(exhibit: nil).isEmpty || store.diskFailed)
-                        if store.queue(exhibit: nil).isEmpty {
+                        Label(nextPlan?.title ?? "You’re caught up", systemImage: "flag.checkered").font(.title2.bold())
+                        Text(nextPlan.map { ($0.car?.name ?? "From your garage") + " · " + $0.subtitle } ?? "Research a new car or return for a review.").font(.headline)
+                        Text("A short chapter, a few questions, and a little discovery.").font(.subheadline).foregroundStyle(.secondary)
+                        Button("Continue learning") { choosingExhibits = true }.buttonStyle(RallyButton())
+                            .disabled(nextPlan == nil || store.diskFailed)
+                        if nextPlan == nil {
                             Text("You're caught up. Research cars in Garage or return when your next review is due.").font(.caption)
                         }
                     }.padding(18).padding(.bottom, 5).background(Rally.paleYellow, in: RoundedRectangle(cornerRadius: 24))
+                    Text("Your car journeys").font(.title2.bold())
+                    ForEach(store.snapshot.cars.filter { car in JourneyPlanner.hasEligibleFacts(car: car, facts: store.snapshot.facts) }) { car in
+                        Button { chosenCar = car } label: { journeyCard(car) }.buttonStyle(.plain)
+                            .disabled(!canStudy(car) || store.diskFailed)
+                    }
                     DisclosureGroup("Your progress") {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("\(store.snapshot.sessions.count) completed sessions")
@@ -53,9 +62,27 @@ struct StudyHome: View {
             .onChange(of: choosingExhibits) { _, choosing in
                 if choosing { selectedExhibits = [] }
             }
-            .fullScreenCover(isPresented: $studying) { QuizView(exhibitIds: selectedExhibits) }
+            .fullScreenCover(isPresented: $studying) { JourneyLessonView(exhibitIds: selectedExhibits) }
+            .fullScreenCover(item: $chosenCar) { car in JourneyLessonView(exhibitIds: [car.exhibitId], carId: car.id) }
         }
     }
+    private func canStudy(_ car: Car) -> Bool {
+        var library = store.snapshot
+        library.cars = [car]
+        return JourneyPlanner.plan(snapshot: library, exhibitIds: [car.exhibitId]) != nil
+    }
+    private func journeyCard(_ car: Car) -> some View {
+        let familiarity = JourneyPlanner.familiarity(car: car, facts: store.snapshot.facts, attempts: store.snapshot.attempts)
+        return HStack(spacing: 12) {
+            CarThumbnail(car: car, photos: store.photos(for: car.id))
+            VStack(alignment: .leading, spacing: 6) {
+                Text(car.name).font(.headline)
+                Text(familiarity.label).font(.caption.bold()).foregroundStyle(.secondary)
+                Text(canStudy(car) ? "Continue this car’s story" : "Caught up for now").font(.caption).foregroundStyle(.secondary)
+            }.frame(maxWidth: .infinity, alignment: .leading)
+        }.padding(10).background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20))
+    }
+
 }
 struct ExhibitQuizPicker: View {
     @EnvironmentObject var store: StudyStore
@@ -87,14 +114,14 @@ struct ExhibitQuizPicker: View {
                         }
                     }
                 } header: { Text("Which exhibits would you like to review?") }
-                Text("\(store.queue(exhibitIds: selected).count) facts ready · Multiple choice · No timer")
+                Text(JourneyPlanner.plan(snapshot: store.snapshot, exhibitIds: selected)?.subtitle ?? "No lessons or reviews ready for these exhibits.")
                     .font(.subheadline).foregroundStyle(.secondary)
             }
             .navigationTitle("Choose exhibits")
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
             .safeAreaInset(edge: .bottom) {
-                Button("Begin quiz") { start(selected) }.buttonStyle(RallyButton())
-                    .disabled(selected.isEmpty || store.queue(exhibitIds: selected).isEmpty || store.diskFailed)
+                Button("Begin lesson") { start(selected) }.buttonStyle(RallyButton())
+                    .disabled(selected.isEmpty || JourneyPlanner.plan(snapshot: store.snapshot, exhibitIds: selected) == nil || store.diskFailed)
                     .padding().background(Rally.cream)
             }
             .onAppear { selected = Set(options.map(\.id)) }
@@ -111,117 +138,4 @@ struct ExhibitQuizPicker: View {
             .accessibilityValue(checked ? "Selected" : "Not selected")
             .accessibilityAddTraits(checked ? .isSelected : [])
     }
-}
-struct QuizView: View {
-    @EnvironmentObject var store: StudyStore
-    @Environment(\.dismiss) private var dismiss
-    let exhibitIds: Set<String?>
-    @State private var sessionId = UUID().uuidString
-    @State private var fact: Fact?
-    @State private var choices: [String] = []
-    @State private var response = ""
-    @State private var answerError = ""
-    @State private var result: Bool?
-    @State private var finished = false
-    @State private var correctCount = 0
-    @State private var answerCount = 0
-    @State private var photoIndex = 0
-    @State private var photoRotation = CarPhotoRotation()
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    if finished {
-                        RallyGuide(size: 180)
-                        Text("Stage complete!").font(.largeTitle.bold())
-                        Text("\(correctCount) of \(answerCount) correct")
-                        Text(store.diskFailed ? "Storage failed. Progress is not safely saved; resolve the storage error before continuing." : (answerCount == 0 ? "No answers recorded. This session did not count toward your streak." : "Progress saved on this device. Sync when online."))
-                        Button("Done") { dismiss() }.buttonStyle(RallyButton())
-                    } else {
-                        Text("\(answerCount) answered").font(.caption).foregroundStyle(.secondary)
-                        if let fact {
-                            if let car = store.snapshot.cars.first(where: { $0.id == fact.carId }) {
-                                Text(car.name).font(.headline)
-                                CarPhoto(car: car, photos: store.photos(for: car.id), index: photoIndex, compact: true)
-                            }
-                            Text(fact.prompt).font(.title2.bold())
-                                ForEach(choices, id: \.self) { choice in
-                                    Button { response = choice } label: {
-                                        HStack {
-                                            Text(choice).multilineTextAlignment(.leading)
-                                            Spacer(minLength: 4)
-                                            if response == choice { Image(systemName: "checkmark.circle.fill") }
-                                        }.font(.body.weight(response == choice ? .semibold : .regular))
-                                            .foregroundStyle(.primary).frame(maxWidth: .infinity, minHeight: 28).padding(14)
-                                            .background(response == choice ? Rally.paleYellow : Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-                                            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(response == choice ? Rally.yellow : Color.secondary.opacity(0.25), lineWidth: response == choice ? 2 : 1))
-                                    }.buttonStyle(.plain).disabled(result != nil)
-                                        .accessibilityAddTraits(response == choice ? .isSelected : [])
-                                }
-                            if result == nil {
-                                GuideMessage(text: "Trust your car instincts.")
-                            }
-                            if !answerError.isEmpty { Text(answerError).foregroundStyle(.red) }
-                            if let result {
-                                GuideMessage(text: result ? "Nice driving! You got it." : "Another lap, another chance. Keep practicing!")
-                                Label(result ? "Correct" : "Keep practicing", systemImage: result ? "checkmark.circle.fill" : "arrow.clockwise").font(.headline).foregroundStyle(result ? .green : .primary)
-                                Text("Answer: \(fact.answer)")
-                                Button("Flag this question") {
-                                    store.report(fact, reason: "Flagged during quiz: answer or wording appears incorrect.")
-                                    advance()
-                                }
-                            }
-                        } else {
-                            Text("You're caught up.").font(.title2)
-                            Text("Any missed answers will become due again after a minute. You can finish now or wait for another review.")
-                            Button("Check for due questions") { advance() }
-                        }
-                    }
-                }.padding()
-            }
-            .background(Rally.cream)
-            .safeAreaInset(edge: .bottom) {
-                if !finished && fact != nil {
-                    Group {
-                        if result == nil {
-                            Button("Check answer") { submit() }
-                                .disabled(response.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || response.unicodeScalars.count > StudyInputLimits.response)
-                        } else {
-                            Button("Next question") { advance() }
-                        }
-                    }.buttonStyle(RallyButton()).padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 10).background(Rally.cream)
-                }
-            }
-            .navigationTitle("Quiz")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                if !finished { Button("Finish") { finish() } }
-            }
-            .interactiveDismissDisabled()
-            .onAppear { advance() }
-            .onChange(of: store.diskFailed) { _, failed in
-                if failed && !finished { finish() }
-            }
-        }
-    }
-    private func submit() {
-        guard result == nil, let fact,
-              store.availableFacts.contains(where: { $0.id == fact.id && $0.revision == fact.revision }) else { advance(); return }
-        guard let correct = store.record(fact: fact, response: response, sessionId: sessionId) else {
-            answerError = store.message
-            return
-        }
-        result = correct; answerCount += 1
-        if correct { correctCount += 1 }
-        if answerCount >= 500 { finish() }
-    }
-    private func advance() {
-        fact = store.queue(exhibitIds: exhibitIds).first
-        if let carId = fact?.carId {
-            photoIndex = photoRotation.nextIndex(carId: carId, count: store.photos(for: carId).count)
-        }
-        choices = fact?.choices.shuffled() ?? []
-        response = ""; result = nil; answerError = ""
-    }
-    private func finish() { store.complete(sessionId: sessionId); finished = true }
 }
